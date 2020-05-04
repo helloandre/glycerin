@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "axios": "^0.19.2",
+    "blessed": "^0.1.81",
+    "moment": "^2.24.0",
+    "neo-blessed": "^0.2.0",
+    "puppeteer": "^3.0.2",
+    "qs": "^6.9.3"
+  },
+  "name": "gc-tli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-eslint": "^10.1.0",
+    "eslint": "^6.8.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "prettier": "^2.0.4"
+  },
+  "scripts": {
+    "bootstrap": "PUPPETEER_PRODUCT=firefox yarn",
+    "start": "PUPPETEER_PRODUCT=firefox node index.js",
+    "debug": "PUPPETEER_PRODUCT=firefox node --inspect-brk index.js",
+    "ev": "PUPPETEER_PRODUCT=firefox node index.js -e",
+    "de": "PUPPETEER_PRODUCT=firefox node --inspect-brk index.js -e"
+  }
+}
