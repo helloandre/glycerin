@@ -6,9 +6,20 @@
 
 # Usage
 
+## Running
+
 - install: `yarn bootstrap` [^1]
 - run: `yarn start`
 - watch events go by: `yarn ev`
+
+## Key Bindings
+
+- `enter` - select a chat or thread
+- `escape` - exit a thread (blur focus on input) or exit a chat
+- `h`/`j`/`up`/`down` - navigate chats/threads
+- `ctrl+e` - expand thread messages
+- `ctrl+r` - refresh chats + threads + messages
+- `ctrl+d` - exit
 
 ## Working
 
@@ -26,16 +37,12 @@
 ## Missing
 
 - Fetch more threads/messages
+- scrolling messages
 - User/Room search for new/non-joined (unknown)
 - Mark As Read when joining a room/dm (probably either `/log` or `/events` endpoints)
 
-# UNKNOWN
-
-- what the `at` (`src/lib/api/request.js`) in the request is/does. it's part some kind of hash, some kind of timestamp. it seems to affect what messages are returned, but can't see if there's a timeout to it, and the two parts need to be generated/used togther as updating the timestamp causes request failures.
-
 ## New Features I'd Like To Add
 
-- "quick preview" of threads to display as you're selecting them
 - C-u to jump to latest unread across all chats
 - C-escape to mark all chats read
 - C-tab to switch between MRU chats
