@@ -14,9 +14,14 @@ const messages = blessed.box({
     type: 'line',
   },
   content: 'Select A Thread',
-  mouse: true,
-  keys: true,
-  vi: true,
+  scrollable: true,
+  scrollbar: {
+    style: {
+      fg: 'black',
+      bg: 'white',
+    },
+  },
+  alwaysScroll: true,
 });
 messages._data = {};
 
@@ -36,6 +41,7 @@ async function display(loading = false) {
   }
 
   messages.setContent(formatted.join('\n'));
+  messages.setScrollPerc(100);
   messages.screen.render();
 }
 
@@ -76,6 +82,22 @@ EE.on('screen.refresh', async () => {
     messages._data.messages = await Chat.messages(messages._data.chat, true);
     display();
   }
+});
+EE.on('messages.scroll.down', () => {
+  messages.scroll(1);
+  messages.screen.render();
+});
+EE.on('messages.scroll.bottom', () => {
+  messages.setScrollPerc(100);
+  messages.screen.render();
+});
+EE.on('messages.scroll.up', () => {
+  messages.scroll(-1);
+  messages.screen.render();
+});
+EE.on('messages.scroll.top', () => {
+  messages.scrollTo(0);
+  messages.screen.render();
 });
 
 module.exports = {

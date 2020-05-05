@@ -5,8 +5,6 @@ const sendThreadMessage = require('../lib/api/send-thread-message');
 
 const input = blessed.textbox({
   label: 'Input',
-  // keys: false,
-  // vi: false,
   height: '10%+1',
   width: '75%',
   top: '90%',
@@ -19,20 +17,34 @@ const input = blessed.textbox({
     shape: 'underline',
     blink: true,
   },
-  // inputOnFocus: true,
 });
 input._data = {};
 
-// listeners need to be duplicated from screen
-// as input captures keys and doesn't bubble them
-input.key('C-r', function () {
-  EE.emit('screen.refresh');
-});
-input.key('C-d', function () {
-  process.exit(0);
-});
-input.key('C-e', function () {
-  EE.emit('messages.expand');
+input.on('keypress', (ch, key) => {
+  switch (key.full) {
+    case 'C-k':
+      EE.emit('messages.scroll.up');
+      return;
+    case 'linefeed':
+      EE.emit('messages.scroll.down');
+      return;
+    case 'C-g':
+      EE.emit('messages.scroll.top');
+      return;
+    case 'C-l':
+      EE.emit('messages.scroll.bottom');
+      return;
+    case 'C-e':
+      EE.emit('messages.expand');
+      return;
+    // these listeners need to be duplicated from screen
+    // as input captures keys and doesn't bubble them
+    case 'C-r':
+      EE.emit('screen.refresh');
+      return;
+    case 'C-d':
+      process.exit(0);
+  }
 });
 
 input.on('focus', () => {

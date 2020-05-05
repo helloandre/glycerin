@@ -13,9 +13,9 @@ const threads = blessed.list({
     type: 'line',
   },
   items: ['Select A Room'],
-  mouse: true,
-  keys: true,
-  vi: true,
+  // mouse: true,
+  // keys: true,
+  // vi: true,
 });
 threads._data = {};
 threads.thread = function () {
@@ -42,6 +42,73 @@ async function display(refresh = false) {
   threads.screen.render();
 }
 
+threads.on('keypress', (ch, key) => {
+  switch (key.full) {
+    case 'S-g':
+      threads.select(threads.items.length - 1);
+      threads.screen.render();
+      return;
+    case 'C-k':
+      EE.emit('messages.scroll.up');
+      return;
+    case 'linefeed':
+      EE.emit('messages.scroll.down');
+      return;
+    case 'C-g':
+      EE.emit('messages.scroll.top');
+      return;
+    case 'C-l':
+      EE.emit('messages.scroll.bottom');
+      return;
+    case 'C-e':
+      EE.emit('messages.expand');
+      return;
+    case 'up':
+    case 'k':
+      threads.up();
+      threads.screen.render();
+      return;
+    case 'down':
+    case 'j':
+      threads.down();
+      threads.screen.render();
+      return;
+    case 'g':
+    case 'u':
+      threads.select(0);
+      threads.screen.render();
+      return;
+    case 'i':
+      threads.select(threads.items.length - 1);
+      threads.screen.render();
+      return;
+    case 'enter':
+    case 'right':
+    case 'v':
+      threads.style.selected = {
+        fg: 'black',
+        bg: 'grey',
+      };
+      threads.style.item = {
+        fg: 'grey',
+      };
+
+      EE.emit('threads.select', threads.thread());
+      return;
+    case 'escape':
+    case 'left':
+    case 'q':
+      threads.screen.render();
+      threads.style.selected = {
+        fg: 'white',
+        bg: undefined,
+      };
+      threads._data = undefined;
+      threads.setItems(['Select A Room']);
+      EE.emit('threads.blur');
+      return;
+  }
+});
 threads.on('focus', () => {
   threads.style.selected = {
     fg: 'white',
@@ -68,32 +135,6 @@ threads.on('select item', () => {
     EE.emit('threads.preview', threads.thread());
   }
 });
-
-threads.key(['enter'], () => {
-  threads.style.selected = {
-    fg: 'black',
-    bg: 'grey',
-  };
-  threads.style.item = {
-    fg: 'grey',
-  };
-
-  EE.emit('threads.select', threads.thread());
-  threads.screen.render();
-});
-threads.key(['escape'], () => {
-  threads.style.selected = {
-    fg: 'white',
-    bg: undefined,
-  };
-  threads._data = undefined;
-  threads.setItems(['Select A Room']);
-  EE.emit('threads.blur');
-});
-threads.key('C-e', function () {
-  EE.emit('messages.expand');
-});
-
 EE.on('chats.select', chat => {
   if (!chat.isDm) {
     threads._data = { chat };

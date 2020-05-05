@@ -13,9 +13,6 @@ const chats = blessed.list({
   border: {
     type: 'line',
   },
-  mouse: true,
-  keys: true,
-  vi: true,
   style: {
     selected: {
       bg: 'grey',
@@ -33,6 +30,31 @@ const chats = blessed.list({
   },
 });
 chats._data = { chats: {}, expanded: [] };
+
+chats.on('keypress', (ch, key) => {
+  const selected = chats._data.visible[chats.selected];
+
+  switch (key.full) {
+    case 'e':
+      expand();
+      return;
+    case 'c':
+      collapse();
+      return;
+    case 'enter':
+    case 'right':
+    case 'v':
+      if (selected.expand) {
+        expand();
+      } else if (selected.collapse) {
+        collapse();
+      } else {
+        EE.emit('chats.select', selected);
+      }
+      chats.screen.render();
+      return;
+  }
+});
 
 chats.on('focus', () => {
   chats.style.selected = {
@@ -54,22 +76,16 @@ chats.on('blur', () => {
   };
   chats.screen.render();
 });
-
-chats.key(['enter'], () => {
-  const selected = chats._data.visible[chats.selected];
-
-  if (selected.expand) {
-    expand();
-  } else if (selected.collapse) {
-    collapse();
-  } else {
-    EE.emit('chats.select', selected);
+EE.on('screen.ready', loadAll);
+EE.on('screen.refresh', loadAll);
+EE.on('input.blur', from => {
+  if (from === 'chats') {
+    chats.focus();
   }
-
-  chats.screen.render();
 });
-chats.key(['C-e'], expand);
-chats.key(['C-c'], collapse);
+EE.on('threads.blur', () => {
+  chats.focus();
+});
 
 function expand() {
   const type = selectedType();
@@ -146,17 +162,6 @@ async function loadAll() {
   chats._data.chats = await Chat.getAll();
   display();
 }
-
-EE.on('screen.ready', loadAll);
-EE.on('screen.refresh', loadAll);
-EE.on('input.blur', from => {
-  if (from === 'chats') {
-    chats.focus();
-  }
-});
-EE.on('threads.blur', () => {
-  chats.focus();
-});
 
 module.exports = {
   chats,
