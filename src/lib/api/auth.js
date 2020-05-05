@@ -7,7 +7,6 @@ const randomId = require('../random-id');
 const { URL_EVENTS, URL_REGISTER } = require('../../../constants');
 const config = require('../../lib/config');
 
-// let REQUEST_COOKIES = '';
 let AUTH = {
   request: {},
   events: {},
@@ -29,9 +28,21 @@ function getRequestCookies() {
     const page = await browser.newPage();
     page.on('load', async () => {
       if (/^https:\/\/chat\.google\.com/.test(page.url())) {
-        const cookies = await page.cookies();
+        const cookie = (await page.cookies())
+          .map(c => [c.name, c.value].join('='))
+          .join('; ');
+        // this is some kind of magical one-time value tied to a timestamp
+        // the first 6 characters seem to be consistent across users
+        const at = await page.evaluate(
+          () =>
+            // eslint-disable-next-line no-undef
+            Object.entries(window.WIZ_global_data).filter(o =>
+              /:[0-9]{13}/.test(o[1])
+            )[0][1]
+        );
+
+        res({ cookie, at });
         browser.close();
-        res(cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; '));
       }
     });
     await page.goto('https://chat.google.com');
@@ -51,9 +62,7 @@ async function init() {
     !conf.auth ||
     moment(conf.auth.fetchedAt).isBefore(moment().utc().subtract(5, 'days'))
   ) {
-    AUTH.request = {
-      cookie: await getRequestCookies(),
-    };
+    AUTH.request = await getRequestCookies();
     config.saveAuth(AUTH);
   } else {
     AUTH = conf.auth;
@@ -108,22 +117,22 @@ async function register() {
     .then(({ data }) => parse.fromEvents(data)[0][0][1][1])
     .catch(e => console.log(e));
 
-  AUTH.events = {
+  return {
     cookie,
     SID,
   };
 }
 
-function requestCookie() {
-  return AUTH.request.cookie;
+function requestData() {
+  return AUTH.request;
 }
 
 async function eventsData(refresh = false) {
   if (refresh || !AUTH.events.cookie.length) {
-    await register();
+    AUTH.events = await register();
   }
 
   return AUTH.events;
 }
 
-module.exports = { init, requestCookie, eventsData };
+module.exports = { init, requestData, eventsData };

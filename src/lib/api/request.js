@@ -7,12 +7,6 @@ const { DEFAULT_HEADERS } = require('../../../constants');
 const DEFAULT_PARAMS = {
   rt: 'c',
 };
-/**
- * @TODO warning, this "at" param is magic
- * it has a timestamp, but the prefix seems to need to match the timestamp
- * I don't *think* this is a meaninful secret on it's own, so is ok to include in git?
- */
-const AT = 'AM9aX1FUPXhHY1aNDL2U948ldv4Y:1588518881495';
 
 /**
  *
@@ -23,11 +17,12 @@ const AT = 'AM9aX1FUPXhHY1aNDL2U948ldv4Y:1588518881495';
  * @param {Object} [headers] default: {}
  */
 module.exports = function (method, url, data = {}, params = {}, headers = {}) {
+  const { at, cookie } = auth.requestData();
   return axios({
     method,
     url,
     data: qs.stringify({
-      at: AT,
+      at,
       ...data,
     }),
     params: {
@@ -36,7 +31,7 @@ module.exports = function (method, url, data = {}, params = {}, headers = {}) {
     },
     headers: {
       ...DEFAULT_HEADERS,
-      cookie: auth.requestCookie(),
+      cookie,
       ...headers,
     },
   })
