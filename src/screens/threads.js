@@ -63,6 +63,11 @@ threads.on('blur', () => {
   }
   threads.screen.render();
 });
+threads.on('select item', () => {
+  if (threads._data) {
+    EE.emit('threads.preview', threads.thread());
+  }
+});
 
 threads.key(['enter'], () => {
   threads.style.selected = {
@@ -81,9 +86,12 @@ threads.key(['escape'], () => {
     fg: 'white',
     bg: undefined,
   };
-  threads.setItems(['Select A Room']);
   threads._data = undefined;
+  threads.setItems(['Select A Room']);
   EE.emit('threads.blur');
+});
+threads.key('C-e', function () {
+  EE.emit('messages.expand');
 });
 
 EE.on('chats.select', chat => {

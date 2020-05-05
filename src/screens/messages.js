@@ -39,7 +39,7 @@ async function display(loading = false) {
   messages.screen.render();
 }
 
-EE.on('threads.select', async thread => {
+EE.on('threads.preview', async thread => {
   messages.setContent('Loading...');
   messages.screen.render();
 
@@ -58,7 +58,7 @@ EE.on('chats.select', async chat => {
     display();
   }
 });
-EE.on('input.blur', () => {
+EE.on('threads.blur', () => {
   messages._data = {};
   messages.setContent('Select A Thread');
   messages.screen.render();
