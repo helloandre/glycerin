@@ -14,9 +14,14 @@ const messages = blessed.box({
     type: 'line',
   },
   content: 'Select A Thread',
-  mouse: true,
-  keys: true,
-  vi: true,
+  scrollable: true,
+  scrollbar: {
+    style: {
+      fg: 'black',
+      bg: 'white',
+    },
+  },
+  alwaysScroll: true,
 });
 messages._data = {};
 
@@ -36,6 +41,7 @@ async function display(loading = false) {
   }
 
   messages.setContent(formatted.join('\n'));
+  messages.setScrollPerc(100);
   messages.screen.render();
 }
 
@@ -47,6 +53,7 @@ EE.on('threads.preview', async thread => {
   // initially we only want to display the "preview" version of the thread
   // we expand it later by listenting for the 'messages.expand' event
   messages._data.messages = thread.messages;
+  EE.emit('messages.read', thread);
 
   display();
 });
@@ -56,6 +63,7 @@ EE.on('chats.select', async chat => {
     messages._data.chat = chat;
     messages._data.messages = await Chat.messages(chat);
     display();
+    EE.emit('messages.read', chat);
   }
 });
 EE.on('threads.blur', () => {
@@ -74,6 +82,36 @@ EE.on('screen.refresh', async () => {
   if (messages._data.chat) {
     display(true);
     messages._data.messages = await Chat.messages(messages._data.chat, true);
+    display();
+  }
+});
+EE.on('messages.scroll.down', () => {
+  messages.scroll(1);
+  messages.screen.render();
+});
+EE.on('messages.scroll.bottom', () => {
+  messages.setScrollPerc(100);
+  messages.screen.render();
+});
+EE.on('messages.scroll.up', () => {
+  messages.scroll(-1);
+  messages.screen.render();
+});
+EE.on('messages.scroll.top', () => {
+  messages.scrollTo(0);
+  messages.screen.render();
+});
+EE.on('messages.new', async ({ chat, thread }) => {
+  if (!messages._data.chat) {
+    return;
+  }
+
+  if (
+    chat.uri === messages._data.chat.uri ||
+    (thread && messages._data.chat.id === thread.id)
+  ) {
+    messages._data.messages = await Chat.messages(messages._data.chat);
+    EE.emit('messages.read', messages._data.chat);
     display();
   }
 });

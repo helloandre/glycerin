@@ -4,9 +4,16 @@ const getChatMessages = require('../api/get-chat-messages');
 const getThreadMessages = require('../api/get-thread-messages');
 const unpack = require('../api/unpack');
 const User = require('./user');
+const EE = require('../eventemitter');
 
 // indexed by unpack.room.uri
 const cache = {};
+/**
+ * Array<Object> where Object contains:
+ *  - chatUri
+ *  - [threadId]
+ */
+let unread = [];
 
 /**
  * Give me all my chats, please
@@ -21,19 +28,91 @@ const cache = {};
 function getAll() {
   return getChats()
     .then(unpack.chats)
-    .then(chats => {
+    .then(async chats => {
       // eslint-disable-next-line no-unused-vars
       for (let [type, group] of Object.entries(chats)) {
-        group.forEach(chat => {
+        for (let chat of group) {
           cache[chat.uri] = chat;
           if (chat.isDm) {
             User.prefetch(chat.user);
           }
-        });
+
+          // chats are ordered by unread from the endpoint
+          // so we're kinda cheating here
+          if (chat.isUnread) {
+            if (chat.isDm) {
+              markUnread(chat);
+            } else {
+              // this is bad. we shouldn't be blocking initial load on unread messages :(
+              const ts = await threads(chat);
+              Object.entries(ts)
+                .filter(t => t[1].isUnread)
+                .forEach(t => markUnread(t[1]));
+            }
+          }
+        }
       }
 
       return chats;
     });
+}
+
+/**
+ * remove this object from our unread queue, potentially out of order
+ *
+ * @param {unpack.chat|unpack.thread} obj
+ */
+function markRead(obj) {
+  if ('isDm' in obj) {
+    unread = unread.filter(u => u.chatUri !== obj.uri);
+  } else {
+    unread = unread.filter(
+      u => u.chatUri !== obj.room.uri && u.threadId !== obj.id
+    );
+  }
+}
+
+/**
+ * some assumptions here, we will never give a non-dm chat object
+ *
+ * @param {unpack.chat|unpack.thread} obj
+ */
+async function markUnread(obj) {
+  if ('isDm' in obj) {
+    unread.unshift({ chatUri: obj.uri, at: obj.mostRecentAt });
+  } else {
+    unread.unshift({
+      chatUri: obj.room.uri,
+      threadId: obj.id,
+      at: obj.mostRecentAt,
+    });
+  }
+
+  unread.sort((a, b) => (a.at > b.at ? -1 : 1));
+}
+
+async function nextUnread() {
+  if (unread.length === 0) {
+    return { chat: false };
+  }
+
+  const { chatUri, threadId } = unread.shift();
+  const chat = cache[chatUri];
+
+  if (threadId) {
+    // we potentially haven't loaded the threads for this chat yet
+    // so do so now, don't assume chat.threads exists
+    await messages({ id: threadId, room: chat });
+
+    return {
+      chat,
+      thread: cache[chatUri].threads[threadId],
+    };
+  }
+
+  return {
+    chat,
+  };
 }
 
 /**
@@ -96,8 +175,12 @@ async function messages(chat, ignoreCache = false) {
     return cache[chat.uri].messages;
   }
 
+  // this is first time we've tried to load any threads for this chat
+  if (!cache[chat.room.uri].threads) {
+    cache[chat.room.uri].threads = { [chat.id]: chat };
+  }
+
   // we're dealing with a thread
-  // NOTE: the assumption that thread() has been called above to load this thread
   if (!cache[chat.room.uri].threads[chat.id].messages || ignoreCache) {
     // we're passed an unpack.thread
     cache[chat.room.uri].threads[chat.id].messages = await getThreadMessages(
@@ -117,8 +200,67 @@ async function messages(chat, ignoreCache = false) {
   return cache[chat.room.uri].threads[chat.id].messages;
 }
 
+EE.on('messages.sent', msg => {
+  if (msg.thread.id) {
+    cache[msg.room.uri].threads[msg.thread.id].messages.push(msg);
+    cache[msg.room.uri].threads[msg.thread.id].total++;
+  } else {
+    cache[msg.room.uri].messages.push(msg);
+  }
+});
+
+EE.once('chats.loaded', () => {
+  EE.on('events.6', evt => {
+    try {
+      evt.user.room = evt.room;
+      User.prefetch(evt.user);
+      const msg = {
+        ...evt,
+        isUnread: true,
+      };
+
+      if (evt.thread) {
+        // we may not have loaded this chat's threads yet
+        // do not do so now. we will either do so on
+        // chats.select or chats.nextUnread
+        const loaded =
+          cache[evt.room.uri].threads &&
+          cache[evt.room.uri].threads[evt.thread.id];
+        if (loaded) {
+          cache[evt.room.uri].threads[evt.thread.id].messages.push(msg);
+          cache[evt.room.uri].isUnread = true;
+          cache[evt.room.uri].threads[evt.thread.id].isUnread = true;
+          cache[evt.room.uri].threads[evt.thread.id].total++;
+        }
+        markUnread({
+          mostRecentAt: evt.mostRecentAt,
+          id: evt.thread.id,
+          room: evt.room,
+        });
+        // but we still want to tell screens/chats about it
+        EE.emit('messages.new', {
+          chat: evt.room,
+          thread: evt.thread,
+        });
+      } else {
+        if (cache[evt.room.uri].messages) {
+          cache[evt.room.uri].messages.push(msg);
+          cache[evt.room.uri].isUnread = true;
+        }
+        markUnread(cache[evt.room.uri]);
+        EE.emit('messages.new', { chat: evt.room });
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  });
+});
+
 module.exports = {
   getAll,
   threads,
   messages,
+  nextUnread,
+  markRead,
+  markUnread,
 };

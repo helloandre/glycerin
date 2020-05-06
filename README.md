@@ -12,14 +12,36 @@
 - run: `yarn start`
 - watch events go by: `yarn ev`
 
-## Key Bindings
+# Key Bindings
 
-- `enter` - select a chat or thread
-- `escape` - exit a thread (blur focus on input) or exit a chat
-- `h`/`j`/`up`/`down` - navigate chats/threads
-- `ctrl+e` - expand thread messages
-- `ctrl+r` - refresh chats + threads + messages
+### global
+
 - `ctrl+d` - exit
+- `ctrl+r` - reload chats/threads/messages
+- `ctrl+n` - go to the newest unread message
+
+### Chats
+
+- `enter`/`right`/`v` - select chat
+- `e` - expand section
+- `c` - collapse section
+- `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate chats
+
+### Threads
+
+- `enter`/`right`/`v` - select thread
+- `escape`/`left`/`q` - exit to chats
+- `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate threads
+- `ctrl+e` - expand messages
+- `ctrl+j`/`ctrl+k`/`ctrl+g`/`ctrl+l` - navitage messages
+
+### Input
+
+- `escape` - exit to threads or chats (in case of dm)
+- `ctrl+e` - expand messages
+- `ctrl+j`/`ctrl+k`/`ctrl+g`/`ctrl+l` - navitage messages
+
+# Status
 
 ## Working
 
@@ -43,7 +65,6 @@
 
 ## New Features I'd Like To Add
 
-- C-u to jump to latest unread across all chats
 - C-escape to mark all chats read
 - C-tab to switch between MRU chats
 - basic configuration customization

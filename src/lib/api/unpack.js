@@ -14,10 +14,10 @@ function thread(t) {
     _raw: t,
     id: t[0][0],
     room: roomMeta(t[0][2]),
-    createdAt: t[1],
-    updatedAt: t[2],
+    mostRecentAt: t[1],
+    mostRecentReadAt: t[2],
     messages,
-    unread: messages.filter(m => m.unread).length,
+    isUnread: messages.filter(m => m.isUnread).length,
     unfetched: t[6],
     total: t[4].length + t[6],
     // t[12] is some kind of timestamp
@@ -43,7 +43,7 @@ function message(msg) {
       parts: msg[9],
     },
     createdAt: msg[11],
-    unread: msg[14],
+    isUnread: msg[14],
     // in int format
     // createdAt: msg[16]
     // threadish: msg[17] seems to be thread+room again...
@@ -68,7 +68,7 @@ function chat(c) {
   return {
     _raw: c,
     ...roomMeta(c[0]),
-    hasUnread: c[6],
+    isUnread: c[6],
     // not sure about these, but these are the indexes
     // that change from null -> true between chats
     // that should and shouldn't alert
@@ -98,7 +98,21 @@ function chats(cs) {
     favorites: cs[2].map(fave),
     dms: cs[7].map(chat),
     rooms: cs[8].map(chat),
-    bots: (cs[9] || []).map(chat),
+    bots: (cs[9] || []).map(chat)
+    // dmsClosed: cs[15]
+  };
+}
+
+/**
+ * response from a /mutate endpoint
+ */
+function mutate(m) {
+  return {
+    ...message(m[2]),
+    room: roomMeta(m[2][17][2][2]),
+    thread: {
+      id: m[2][17][2][0],
+    },
   };
 }
 
@@ -138,6 +152,7 @@ function event(evt) {
       : _roomEvent(base, type, mainData);
   } catch (e) {
     console.log(e);
+    JSON.stringify(mainData, null, 2);
     unpacked = {
       error: true,
       ...base,
@@ -155,75 +170,43 @@ function event(evt) {
 }
 
 function _roomEvent(base, type, data) {
-  switch (type) {
-    // ?? something about the room, appears after a message sent
-    // case 3
-    // ?? marked as read update?
-    // case 4:
-    // text update
-    case 6:
-      return {
-        ...base,
-        text: {
-          raw: data[5][0][9],
-        },
-        room: {
-          meta: {
-            // @TODO confirm
-            uri: `space/${data[5][0][0][0][3][1]}`,
-            id: data[5][0][0][0][3][1],
-          },
-        },
-        thread: {
-          id: data[5][0][0][0][3][2][0][0],
-        },
-      };
-    // ?? something room + thread
-    // case 9:
-    // ?? likely just a ping? no actual data included
-    // case 33:
-  }
+  return { ...base, unknown: true, _data: data };
 }
 
 function _withUUID(base, type, data) {
   switch (type) {
-    // most recently read?
-    // case 3:
-    // likely "sent by current user"
+    // marked as read?
+    case 3:
+      return {
+        ...base,
+        _data: data[2],
+        at: data[2][1],
+      };
+    // marked as read
+    case 4:
+      return {
+        ...base,
+        ..._event_thread(data[3][0]),
+      };
+    // new message
     case 6:
       return {
         ...base,
-        // update to interesting data
-        _raw: data[5],
-        /**
-         * 5:
-         *    3: "0",
-         *    5: 1,
-         * 5 > 0:
-         *    19: 1
-         *    23: 0
-         *    24: 0
-         */
         ..._event_msg(data[5][0]),
-        thread: {
-          id: data[5][0][0][1],
-        },
-        user: {
-          id: data[5][0][1][0][0],
-          // ?: data[5][0][1][0][1], -> 1
-        },
+        ..._event_thread(data[5][0][0]),
+      };
+    // message edit
+    case 7:
+      return {
+        ...base,
+        ..._event_msg(data[5][0]),
+        ..._event_thread(data[5][0][0]),
       };
     // more complete message event, includes user/bot name?
-    // doe not appear for rooms, only DMS (confirm: only bots?)
+    // does not appear for rooms, only DMS (confirm: only bots?)
     case 12:
       return {
         ...base,
-        _raw: data[9],
-        /**
-         * 9:
-         *    1: 0
-         *
-         */
         ..._event_msg(data[9][0]),
         thread: {
           id: data[9][0][0][0][1],
@@ -235,31 +218,119 @@ function _withUUID(base, type, data) {
         },
       };
     // seems to be duplicate of 3
-    // case 13:
+    case 13:
+      return {
+        ...base,
+        _data: data[10],
+      };
+    // emoji added to a message
+    case 24:
+      return {
+        ...base,
+        ..._event_thread(data[21][0][0]),
+        emoji: data[21][1],
+        message: {
+          id: data[21][0][1],
+        },
+        // _data: data[21],
+      };
+    // shrug. seems to contain an array of some message contents, but no message ids
+    case 28:
+      return {
+        ...base,
+        _data: data[24],
+      };
+    // connection started / new session started
+    case 33:
+      return base;
   }
 }
 
 function _event_msg(msg) {
-  const r = msg[0][0][3] ? msg[0][0][3][2][2][0] : msg[0][0][0][3][2][2][0];
-  const t = msg[0][0][0] ? msg[0][0][0][1] : msg[0][0][1];
-  const u = {
-    name: typeof msg[1] === 'string' ? msg[1] : undefined,
-    id: msg[1][0][0],
-  };
   return {
+    // lastRead?: msg[2],
+    mostRecent: msg[3],
+    mostRecentAt: msg[3],
+    createdAt: msg[3],
+    message: {
+      id: msg[13],
+    },
     text: {
       raw: msg[9],
     },
-    room: {
-      meta: {
-        uri: `space/${r}`,
-        id: r,
+    user: {
+      name: typeof msg[1] === 'string' ? msg[1] : undefined,
+      id: msg[1][0][0],
+    },
+  };
+}
+
+function _event_thread(data) {
+  // try to figure out the shape of things
+  if (typeof data[1] === 'string') {
+    if (!data[0]) {
+      return {
+        room: {
+          uri: `space/${data[2][0][0]}`,
+          id: data[2][0][0],
+        },
+        thread: {
+          id: data[1],
+        },
+      };
+    }
+
+    // either a DM or a new thread
+    if (data[1] === data[0][3][1]) {
+      if (data[0][3][2].length === 1) {
+        return {
+          room: {
+            uri: `dm/${data[0][3][2][0][0]}`,
+            id: data[0][3][2][0][0],
+          },
+          thread: {
+            id: data[0][3][1],
+          },
+        };
+      }
+
+      return {
+        room: {
+          uri: `dm/${data[0][3][2][2][0]}`,
+          id: data[0][3][2][2][0],
+        },
+      };
+    }
+
+    return {
+      room: {
+        uri: `space/${data[0][3][2][0][0]}`,
+        id: data[0][3][2][0][0],
       },
+      thread: {
+        id: data[0][3][1],
+      },
+    };
+  }
+
+  if (data[3]) {
+    return {
+      room: {
+        uri: `space/${data[3][2][0][0]}`,
+        id: data[3][2][0][0],
+      },
+      thread: {
+        id: data[3][1],
+      },
+    };
+  }
+
+  // events that are room-centric not thread-centric
+  return {
+    room: {
+      uri: `space/${data[2][0][0]}`,
+      id: data[2][0][0],
     },
-    thread: {
-      id: t,
-    },
-    user: u,
   };
 }
 
@@ -269,4 +340,5 @@ module.exports = {
   user,
   message,
   event,
+  mutate,
 };

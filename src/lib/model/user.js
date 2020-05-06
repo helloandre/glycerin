@@ -15,7 +15,7 @@ let dirty = [];
  */
 function prefetch(user) {
   // if we've got a DM, the user comes already fetched
-  if (user.name.length) {
+  if (user.name && user.name.length) {
     cache[user.id] = user;
   }
 
