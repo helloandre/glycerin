@@ -45,27 +45,22 @@ async function display(loading = false) {
   messages.screen.render();
 }
 
-EE.on('threads.preview', async thread => {
+async function view(chat) {
   messages.setContent('Loading...');
   messages.screen.render();
 
-  messages._data.chat = thread;
-  // initially we only want to display the "preview" version of the thread
-  // we expand it later by listenting for the 'messages.expand' event
-  messages._data.messages = thread.messages;
-  EE.emit('messages.read', thread);
-
+  messages._data.chat = chat;
+  messages._data.messages = chat.isDm
+    ? await Chat.messages(chat)
+    : chat.messages || [];
   display();
-});
-EE.on('chats.select', async chat => {
-  if (chat.isDm) {
-    messages.setContent('Loading...');
-    messages._data.chat = chat;
-    messages._data.messages = await Chat.messages(chat);
-    display();
-    EE.emit('messages.read', chat);
-  }
-});
+
+  EE.emit('messages.read', chat);
+}
+
+EE.on('threads.preview', view);
+EE.on('chats.select', view);
+EE.on('chats.nextUnread', ({ chat }) => view(chat));
 EE.on('threads.blur', () => {
   messages._data = {};
   messages.setContent('Select A Thread');
@@ -80,7 +75,6 @@ EE.on('messages.expand', async () => {
 });
 EE.on('screen.refresh', async () => {
   if (messages._data.chat) {
-    display(true);
     messages._data.messages = await Chat.messages(messages._data.chat, true);
     display();
   }

@@ -177,7 +177,7 @@ function indexes(chat) {
     }
 
     const expando = expanded(type) || shouldDisplayExpando(type) ? 1 : 0;
-    numAbove += +expando;
+    numAbove += limit + expando;
   }
 
   return { index: -1 };
