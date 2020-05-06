@@ -98,7 +98,7 @@ function chats(cs) {
     favorites: cs[2].map(fave),
     dms: cs[7].map(chat),
     rooms: cs[8].map(chat),
-    bots: cs[9].map(chat),
+    bots: (cs[9] || []).map(chat),
   };
 }
 
