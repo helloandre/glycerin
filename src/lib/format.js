@@ -9,7 +9,7 @@ const User = require('./model/user');
  * @return {String}
  */
 function chat(c) {
-  if (c.hasUnread) {
+  if (c.isUnread) {
     return `{bold}${c.displayName}{/bold}`;
   }
   return c.displayName;
@@ -29,7 +29,7 @@ function chat(c) {
 async function thread(t) {
   const countStr =
     t.total > 99 ? '99+' : `${t.total.toString().padEnd(3, ' ')}`;
-  const prefixStr = t.unread ? `{bold}${countStr}{/bold}` : countStr;
+  const prefixStr = t.isUnread ? `{bold}${countStr}{/bold}` : countStr;
   const preview = await message(t.messages[0], true);
   return `${prefixStr}>${preview}`;
 }

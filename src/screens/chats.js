@@ -35,6 +35,16 @@ chats.on('keypress', (ch, key) => {
   const selected = chats._data.visible[chats.selected];
 
   switch (key.full) {
+    case 'j':
+    case 'down':
+      chats.down();
+      chats.screen.render();
+      return;
+    case 'k':
+    case 'up':
+      chats.up();
+      chats.screen.render();
+      return;
     case 'e':
       expand();
       return;
@@ -78,6 +88,11 @@ chats.on('blur', () => {
 });
 EE.on('screen.ready', loadAll);
 EE.on('screen.refresh', loadAll);
+EE.on('chats.nextUnread', ({ chat }) => {
+  if (chat) {
+    select(chat);
+  }
+});
 EE.on('input.blur', from => {
   if (from === 'chats') {
     chats.focus();
@@ -87,8 +102,8 @@ EE.on('threads.blur', () => {
   chats.focus();
 });
 
-function expand() {
-  const type = selectedType();
+function expand(t) {
+  const type = t || selectedType();
   if (!expanded(type)) {
     chats._data.expanded.push(type);
     display();
@@ -130,6 +145,24 @@ function shouldDisplayExpando(type) {
 }
 function expanded(type) {
   return chats._data.expanded.indexOf(type) !== -1;
+}
+function select(chat) {
+  let numAbove = 0;
+  for (let type of Object.keys(chats._data.chats)) {
+    const idx = chats._data.chats[type].findIndex(c => c.uri === chat.uri);
+    if (idx !== -1) {
+      if (idx > displayLimit(type)) {
+        expand(type);
+      }
+      chats.select(idx + numAbove);
+      chats.screen.render();
+      return;
+    }
+
+    const limit = displayLimit(type);
+    const expando = expanded(type) || shouldDisplayExpando(type) ? 1 : 0;
+    numAbove += limit + expando;
+  }
 }
 
 function display() {

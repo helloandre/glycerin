@@ -1,5 +1,6 @@
 const blessed = require('neo-blessed');
 const EE = require('./lib/eventemitter');
+const Chat = require('./lib/model/chat');
 
 function bootstrap() {
   /**
@@ -34,11 +35,15 @@ function bootstrap() {
   chats.focus();
 
   screen.title = 'GChat TUI';
-  screen.key(['C-d'], () => {
-    return process.exit(0);
-  });
-  screen.key('C-r', () => {
-    EE.emit('screen.refresh');
+  screen.on('keypress', (ch, key) => {
+    switch (key.full) {
+      case 'C-d':
+        return process.exit(0);
+      case 'C-r':
+        return EE.emit('screen.refresh');
+      case 'C-n':
+        return EE.emit('chats.nextUnread', Chat.nextUnread());
+    }
   });
 
   screen.getChats = () => screen.children[0];

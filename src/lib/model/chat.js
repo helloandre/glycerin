@@ -7,6 +7,12 @@ const User = require('./user');
 
 // indexed by unpack.room.uri
 const cache = {};
+/**
+ * Array<Object> where Object contains:
+ *  - chatUri
+ *  - [threadId]
+ */
+let unread = [];
 
 /**
  * Give me all my chats, please
@@ -21,19 +27,80 @@ const cache = {};
 function getAll() {
   return getChats()
     .then(unpack.chats)
-    .then(chats => {
+    .then(async chats => {
       // eslint-disable-next-line no-unused-vars
       for (let [type, group] of Object.entries(chats)) {
-        group.forEach(chat => {
+        for (let chat of group) {
           cache[chat.uri] = chat;
           if (chat.isDm) {
             User.prefetch(chat.user);
           }
-        });
+
+          // chats are ordered by unread from the endpoint
+          // so we're kinda cheating here
+          if (chat.isUnread) {
+            if (chat.isDm) {
+              markUnread(chat);
+            } else {
+              // this is bad. we shouldn't be blocking initial load on unread messages :(
+              const ts = await threads(chat);
+              Object.entries(ts)
+                .filter(t => t[1].isUnread)
+                .forEach(t => markUnread(t[1]));
+            }
+          }
+        }
       }
 
       return chats;
     });
+}
+
+/**
+ * remove this object from our unread queue, potentially out of order
+ *
+ * @param {unpack.chat|unpack.thread} obj
+ */
+function markRead(obj) {
+  if ('isDm' in obj) {
+    unread = unread.filter(u => u.chatUri !== obj.uri);
+  } else {
+    unread = unread.filter(
+      u => u.chatUri !== obj.room.uri && u.threadId !== obj.id
+    );
+  }
+}
+
+/**
+ * some assumptions here, we will never give a non-dm chat object
+ *
+ * @param {unpack.chat|unpack.thread} obj
+ */
+async function markUnread(obj) {
+  if ('isDm' in obj) {
+    unread.unshift({ chatUri: obj.uri, at: obj.mostRecentAt });
+  } else {
+    unread.unshift({
+      chatUri: obj.room.uri,
+      threadId: obj.id,
+      at: obj.mostRecentAt,
+    });
+  }
+
+  unread.sort((a, b) => (a.at > b.at ? -1 : 1));
+}
+
+function nextUnread() {
+  if (unread.length === 0) {
+    return { chat: false };
+  }
+
+  const u = unread.shift();
+  const c = cache[u.chatUri];
+  return {
+    chat: c,
+    thread: u.threadId ? c.threads[u.threadId] : undefined,
+  };
 }
 
 /**
@@ -121,4 +188,7 @@ module.exports = {
   getAll,
   threads,
   messages,
+  nextUnread,
+  markRead,
+  markUnread,
 };

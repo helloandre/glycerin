@@ -14,10 +14,10 @@ function thread(t) {
     _raw: t,
     id: t[0][0],
     room: roomMeta(t[0][2]),
-    createdAt: t[1],
-    updatedAt: t[2],
+    mostRecentAt: t[1],
+    mostRecentReadAt: t[2],
     messages,
-    unread: messages.filter(m => m.unread).length,
+    isUnread: messages.filter(m => m.isUnread).length,
     unfetched: t[6],
     total: t[4].length + t[6],
     // t[12] is some kind of timestamp
@@ -43,7 +43,7 @@ function message(msg) {
       parts: msg[9],
     },
     createdAt: msg[11],
-    unread: msg[14],
+    isUnread: msg[14],
     // in int format
     // createdAt: msg[16]
     // threadish: msg[17] seems to be thread+room again...
@@ -68,7 +68,7 @@ function chat(c) {
   return {
     _raw: c,
     ...roomMeta(c[0]),
-    hasUnread: c[6],
+    isUnread: c[6],
     // not sure about these, but these are the indexes
     // that change from null -> true between chats
     // that should and shouldn't alert
@@ -99,6 +99,7 @@ function chats(cs) {
     dms: cs[7].map(chat),
     rooms: cs[8].map(chat),
     bots: cs[9].map(chat),
+    // dmsClosed: cs[15]
   };
 }
 

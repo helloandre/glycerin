@@ -22,32 +22,22 @@ threads.thread = function () {
   return threads._data.threads[threads.selected];
 };
 
-async function display(refresh = false) {
-  threads.setItems(['Loading...']);
-  threads.screen.render();
-
-  const ts = await Chat.threads(threads._data.chat, refresh);
-  threads._data.threads = [];
+async function display(selectLast = true) {
   const formatted = [];
   // eslint-disable-next-line no-unused-vars
-  for (let [id, thread] of Object.entries(ts)) {
+  for (let thread of threads._data.threads) {
     formatted.push(await format.thread(thread));
-    threads._data.threads.push(thread);
   }
 
   threads.setItems(formatted);
-  threads.select(formatted.length - 1);
-  threads.scrollTo(formatted.length - 1);
-
-  threads.screen.render();
+  if (selectLast) {
+    threads.select(formatted.length - 1);
+    threads.screen.render();
+  }
 }
 
 threads.on('keypress', (ch, key) => {
   switch (key.full) {
-    case 'S-g':
-      threads.select(threads.items.length - 1);
-      threads.screen.render();
-      return;
     case 'C-k':
       EE.emit('messages.scroll.up');
       return;
@@ -74,11 +64,10 @@ threads.on('keypress', (ch, key) => {
       threads.screen.render();
       return;
     case 'g':
-    case 'u':
       threads.select(0);
       threads.screen.render();
       return;
-    case 'i':
+    case 'S-g':
       threads.select(threads.items.length - 1);
       threads.screen.render();
       return;
@@ -92,7 +81,6 @@ threads.on('keypress', (ch, key) => {
       threads.style.item = {
         fg: 'grey',
       };
-
       EE.emit('threads.select', threads.thread());
       return;
     case 'escape':
@@ -117,6 +105,7 @@ threads.on('focus', () => {
   threads.style.item = {
     fg: 'white',
   };
+  threads.screen.render();
 });
 threads.on('blur', () => {
   if (threads._data) {
@@ -135,12 +124,47 @@ threads.on('select item', () => {
     EE.emit('threads.preview', threads.thread());
   }
 });
-EE.on('chats.select', chat => {
+EE.on('chats.select', async chat => {
   if (!chat.isDm) {
-    threads._data = { chat };
-    display();
-
     threads.focus();
+    threads.setItems(['Loading...']);
+    threads.screen.render();
+
+    threads._data = { chat, threads: toArray(await Chat.threads(chat)) };
+    await display();
+  }
+});
+EE.on('chats.nextUnread', async ({ chat, thread }) => {
+  if (thread) {
+    threads.style.selected = {
+      fg: 'black',
+      bg: 'grey',
+    };
+    threads.style.item = {
+      fg: 'grey',
+    };
+
+    if (
+      !threads._data ||
+      !threads._data.chat ||
+      chat.uri !== threads._data.chat.uri
+    ) {
+      threads.setItems(['Loading...']);
+      threads.screen.render();
+
+      threads._data = { chat, threads: toArray(await Chat.threads(chat)) };
+    } else {
+      threads._data.threads = toArray(await Chat.threads(chat));
+    }
+
+    await display(false);
+    const idx = threads._data.threads.findIndex(t => t.id === thread.id);
+    threads.select(idx);
+    threads.screen.render();
+  } else if (chat) {
+    threads._data = undefined;
+    threads.setItems(['Select A Room']);
+    threads.screen.render();
   }
 });
 EE.on('input.blur', from => {
@@ -148,11 +172,17 @@ EE.on('input.blur', from => {
     threads.focus();
   }
 });
-EE.on('screen.refresh', () => {
+EE.on('screen.refresh', async () => {
   if (threads._data && threads._data.chat) {
-    display(true);
+    threads._data.threads = toArray(
+      await Chat.threads(threads._data.chat, true)
+    );
   }
 });
+
+function toArray(ts) {
+  return Object.entries(ts).map(t => t[1]);
+}
 
 module.exports = {
   threads,

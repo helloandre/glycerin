@@ -2,6 +2,7 @@ const blessed = require('neo-blessed');
 const EE = require('../lib/eventemitter');
 const sendChatMessage = require('../lib/api/send-chat-message');
 const sendThreadMessage = require('../lib/api/send-thread-message');
+const Chat = require('../lib/model/chat');
 
 const input = blessed.textbox({
   label: 'Input',
@@ -42,6 +43,9 @@ input.on('keypress', (ch, key) => {
     case 'C-r':
       EE.emit('screen.refresh');
       return;
+    case 'C-n':
+      EE.emit('chats.nextUnread', Chat.nextUnread());
+      return;
     case 'C-d':
       process.exit(0);
   }
@@ -81,7 +85,6 @@ EE.on('chats.select', chat => {
     input.screen.render();
   }
 });
-
 EE.on('threads.select', thread => {
   input._data = {
     thread,
@@ -89,6 +92,16 @@ EE.on('threads.select', thread => {
   };
   input.focus();
   input.screen.render();
+});
+EE.on('chats.nextUnread', ({ thread }) => {
+  if (thread) {
+    input._data = {
+      thread,
+      from: 'threads',
+    };
+    input.focus();
+    input.screen.render();
+  }
 });
 
 module.exports = {

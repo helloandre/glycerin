@@ -18,6 +18,7 @@
 
 - `ctrl+d` - exit
 - `ctrl+r` - reload chats/threads/messages
+- `ctrl+n` - go to the newest unread message
 
 ### Chats
 
@@ -64,7 +65,6 @@
 
 ## New Features I'd Like To Add
 
-- C-u to jump to latest unread across all chats
 - C-escape to mark all chats read
 - C-tab to switch between MRU chats
 - basic configuration customization
