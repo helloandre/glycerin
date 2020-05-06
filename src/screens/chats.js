@@ -93,6 +93,11 @@ EE.on('chats.nextUnread', ({ chat }) => {
     select(chat);
   }
 });
+EE.on('messages.new', ({ chat }) => {
+  const { typeIndex, type } = indexes(chat);
+  chats._data.chats[type][typeIndex].isUnread = true;
+  display();
+});
 EE.on('input.blur', from => {
   if (from === 'chats') {
     chats.focus();
@@ -147,22 +152,35 @@ function expanded(type) {
   return chats._data.expanded.indexOf(type) !== -1;
 }
 function select(chat) {
+  const { visibleIndex, needsExpanding, type } = indexes(chat);
+  if (needsExpanding) {
+    expand(type);
+  }
+
+  chats.select(visibleIndex);
+  chats.screen.render();
+}
+function indexes(chat) {
   let numAbove = 0;
   for (let type of Object.keys(chats._data.chats)) {
-    const idx = chats._data.chats[type].findIndex(c => c.uri === chat.uri);
-    if (idx !== -1) {
-      if (idx > displayLimit(type)) {
-        expand(type);
-      }
-      chats.select(idx + numAbove);
-      chats.screen.render();
-      return;
+    const typeIndex = chats._data.chats[type].findIndex(
+      c => c.uri === chat.uri
+    );
+    const limit = displayLimit(type);
+    if (typeIndex !== -1) {
+      return {
+        type,
+        typeIndex,
+        needsExpanding: typeIndex > limit,
+        visibleIndex: typeIndex + numAbove,
+      };
     }
 
-    const limit = displayLimit(type);
     const expando = expanded(type) || shouldDisplayExpando(type) ? 1 : 0;
-    numAbove += limit + expando;
+    numAbove += +expando;
   }
+
+  return { index: -1 };
 }
 
 function display() {
@@ -194,6 +212,7 @@ async function loadAll() {
 
   chats._data.chats = await Chat.getAll();
   display();
+  EE.emit('chats.loaded');
 }
 
 module.exports = {

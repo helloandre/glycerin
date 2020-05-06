@@ -21,7 +21,7 @@ const input = blessed.textbox({
 });
 input._data = {};
 
-input.on('keypress', (ch, key) => {
+input.on('keypress', async (ch, key) => {
   switch (key.full) {
     case 'C-k':
       EE.emit('messages.scroll.up');
@@ -44,7 +44,7 @@ input.on('keypress', (ch, key) => {
       EE.emit('screen.refresh');
       return;
     case 'C-n':
-      EE.emit('chats.nextUnread', Chat.nextUnread());
+      EE.emit('chats.nextUnread', await Chat.nextUnread());
       return;
     case 'C-d':
       process.exit(0);
@@ -52,14 +52,16 @@ input.on('keypress', (ch, key) => {
 });
 
 input.on('focus', () => {
-  input.readInput(async (err, value) => {
+  input.readInput((err, value) => {
     input.clearValue();
     if (value !== null) {
       if (value.length) {
+        // fire and forget these
+        // we get an event when the message is sent
         if (input._data.from === 'chats') {
-          await sendChatMessage(value, input._data.chat);
+          sendChatMessage(value, input._data.chat);
         } else {
-          await sendThreadMessage(value, input._data.thread);
+          sendThreadMessage(value, input._data.thread);
         }
       }
 

@@ -39,5 +39,5 @@ module.exports = function (msg, thread) {
         ],
       ],
     ]),
-  });
+  }).then(resp => resp[0][0][1][ACTIONID_SEND_THREAD_MESSAGE]);
 };

@@ -35,7 +35,10 @@ module.exports = function (method, url, data = {}, params = {}, headers = {}) {
       ...headers,
     },
   })
-    .then(({ data }) => parse.fromResponse(data)[0][0][2])
+    .then(({ data }) => {
+      const resp = parse.fromResponse(data);
+      return resp[0][0][2] ? resp[0][0][2] : resp;
+    })
     .catch(e => {
       console.log(e);
       return e.response.data;

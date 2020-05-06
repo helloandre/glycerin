@@ -4,6 +4,7 @@ const auth = require('./auth');
 const parse = require('./parse');
 const EE = require('../eventemitter');
 const { URL_EVENTS, DEFAULT_HEADERS } = require('../../../constants');
+const unpack = require('./unpack');
 
 let AID = 0;
 
@@ -18,7 +19,23 @@ let AID = 0;
  *
  * @return {Promise}
  */
-module.exports = async function (refresh = false) {
+module.exports = function () {
+  process.nextTick(async () => {
+    let refresh = true;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        await longPoll(refresh);
+        refresh = false;
+      } catch (e) {
+        EE.emit('events.error', e);
+        refresh = true;
+      }
+    }
+  });
+};
+
+async function longPoll(refresh = false) {
   if (refresh) {
     AID = 0;
   }
@@ -50,8 +67,10 @@ module.exports = async function (refresh = false) {
 
             try {
               const parsed = parse.fromEvents(data);
-              EE.emit(`event.${parsed._type}`, parsed);
-              EE.emit(`event.*`, parsed);
+              parsed[0].map(unpack.event).forEach(evt => {
+                EE.emit(`events.${evt._type}`, evt);
+                EE.emit(`events.*`, evt);
+              });
               AID = parsed[0][parsed[0].length - 1][0];
 
               data = '';
@@ -68,4 +87,4 @@ module.exports = async function (refresh = false) {
         console.log(e);
       });
   });
-};
+}

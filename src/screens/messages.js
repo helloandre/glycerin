@@ -53,6 +53,7 @@ EE.on('threads.preview', async thread => {
   // initially we only want to display the "preview" version of the thread
   // we expand it later by listenting for the 'messages.expand' event
   messages._data.messages = thread.messages;
+  EE.emit('messages.read', thread);
 
   display();
 });
@@ -62,6 +63,7 @@ EE.on('chats.select', async chat => {
     messages._data.chat = chat;
     messages._data.messages = await Chat.messages(chat);
     display();
+    EE.emit('messages.read', chat);
   }
 });
 EE.on('threads.blur', () => {
@@ -98,6 +100,20 @@ EE.on('messages.scroll.up', () => {
 EE.on('messages.scroll.top', () => {
   messages.scrollTo(0);
   messages.screen.render();
+});
+EE.on('messages.new', async ({ chat, thread }) => {
+  if (!messages._data.chat) {
+    return;
+  }
+
+  if (
+    chat.uri === messages._data.chat.uri ||
+    (thread && messages._data.chat.id === thread.id)
+  ) {
+    messages._data.messages = await Chat.messages(messages._data.chat);
+    EE.emit('messages.read', messages._data.chat);
+    display();
+  }
 });
 
 module.exports = {

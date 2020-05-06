@@ -27,8 +27,11 @@ function chat(c) {
  * @return {String}
  */
 async function thread(t) {
-  const countStr =
-    t.total > 99 ? '99+' : `${t.total.toString().padEnd(3, ' ')}`;
+  const countStr = t.total
+    ? t.total > 99
+      ? '99+'
+      : `${t.total.toString().padEnd(3, ' ')}`
+    : '+  ';
   const prefixStr = t.isUnread ? `{bold}${countStr}{/bold}` : countStr;
   const preview = await message(t.messages[0], true);
   return `${prefixStr}>${preview}`;

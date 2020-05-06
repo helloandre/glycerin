@@ -35,14 +35,14 @@ function bootstrap() {
   chats.focus();
 
   screen.title = 'GChat TUI';
-  screen.on('keypress', (ch, key) => {
+  screen.on('keypress', async (ch, key) => {
     switch (key.full) {
       case 'C-d':
         return process.exit(0);
       case 'C-r':
         return EE.emit('screen.refresh');
       case 'C-n':
-        return EE.emit('chats.nextUnread', Chat.nextUnread());
+        return EE.emit('chats.nextUnread', await Chat.nextUnread());
     }
   });
 
