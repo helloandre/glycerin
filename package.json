@@ -2,6 +2,7 @@
   "dependencies": {
     "axios": "^0.19.2",
     "blessed": "^0.1.81",
+    "docopt": "^0.6.2",
     "moment": "^2.24.0",
     "neo-blessed": "^0.2.0",
     "puppeteer": "^3.0.2",
@@ -10,6 +11,9 @@
   "name": "gc-tli",
   "version": "1.0.0",
   "main": "index.js",
+  "bin": {
+    "gln": "./index.js"
+  },
   "license": "MIT",
   "devDependencies": {
     "babel-eslint": "^10.1.0",

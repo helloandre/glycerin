@@ -9,13 +9,21 @@ const DEFAULT_HEADERS = {
 };
 
 const ACTIONID_GET_CHATS = '115617451';
-const ACTIONID_GET_CHAT_THREADS = '120296718';
+// _GET_CHAT_THREADS seems unnecessary.
+// we COULD use _GET_CHAT_MESSAGES here as it returns the same threads + messages
+// but with slightly more (as of yet unknown) metadata
+// at any rate, we call this to populate the initial threads
+// but need to call _MESSAGES to load *more*
+// ¯\_(ツ)_/¯
+const ACTIONID_GET_CHAT_THREADS = '120296683';
 const ACTIONID_GET_USERS = '147662381';
 const ACTIONID_GET_THREAD_MESSAGES = '120296731';
 const ACTIONID_SEND_THREAD_MESSAGE = '115099363';
 const ACTIONID_CREATE_THREAD = '120594192'; // yes, the same as SEND_DM_MESSAGE
 const ACTIONID_GET_CHAT_MESSAGES = '120296718';
 const ACTIONID_SEND_CHAT_MESSAGE = '120594192';
+// const ACTIONID_WHOAMI = '115617453'; // [[[115617453,[{"115617453":[]}],null,null,0]]]
+// const ACTIONID_CHAT_MEMBERS = '115617454'; // [[[115617454,[{"115617454":[["space/AAAAnDXy3Ws","AAAAnDXy3Ws",2],true]}],null,null,0]]]
 
 module.exports = {
   URL_DATA,

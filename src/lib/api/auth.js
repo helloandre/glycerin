@@ -54,11 +54,12 @@ function getRequestCookies() {
  * first try to load from disk, otherwise
  * fire up a browser and ~trick~ask the user to log in
  */
-async function init() {
+async function init(opts) {
   const conf = config.get();
 
   // we don't have any auth config saved, or it's >5 days old
   if (
+    opts['--auth'] ||
     !conf.auth ||
     moment(conf.auth.fetchedAt).isBefore(moment().utc().subtract(5, 'days'))
   ) {

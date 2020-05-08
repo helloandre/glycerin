@@ -56,6 +56,10 @@ async function message(msg, truncate = false) {
   }`;
 }
 
+function placehold(str = 'loading') {
+  return ` {bold}{underline}... ${str} ...{/}`;
+}
+
 /**
  * @TODO figure out other kinds of things. potentially use msg.parts
  *
@@ -79,4 +83,5 @@ module.exports = {
   chat,
   thread,
   message,
+  placehold,
 };

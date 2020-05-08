@@ -1,20 +1,40 @@
+const { docopt } = require('docopt');
 const auth = require('./src/lib/api/auth');
 const EE = require('./src/lib/eventemitter');
+// all other imports must be inside auth.init().then() function
+// as anything that requires auth will need to happen inside here
 
-auth
-  .init()
-  // all other imports must be inside this function
-  // as anything that requires auth will need to happen inside here
-  .then(() => {
-    const events = require('./src/lib/api/events');
+const doc = `
+Glycerin - Google Chat Terminal User Interface
+
+Usage:
+  gln [options]
+  gln run [options] <req>
+
+Options:
+  -h --help       Show This Message
+  -a --auth       Force reauthenticate with Firefox
+  -e --events     Do not start a UI, instead print events stream
+`;
+
+const opts = docopt(doc);
+auth.init(opts).then(() => {
+  const events = require('./src/lib/api/events');
+
+  if (opts['--events']) {
     events();
-
-    if (process.argv[2] === '-e' || process.argv[3] === '-e') {
-      EE.on('events.6', evt => {
-        console.log(evt);
-      });
-    } else {
-      const Screen = require('./src/screen');
-      Screen.bootstrap();
-    }
-  });
+    EE.on('events.*', evt => {
+      console.log(evt);
+    });
+  } else if (opts.run) {
+    const req = require('./src/lib/api/request');
+    const { URL_DATA } = require('./constants');
+    req('POST', URL_DATA, { 'f.req': opts['<req>'] }).then(resp =>
+      console.log(JSON.stringify(resp, null, 2))
+    );
+  } else {
+    events();
+    const Screen = require('./src/screen');
+    Screen.bootstrap();
+  }
+});

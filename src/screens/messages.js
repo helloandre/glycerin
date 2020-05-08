@@ -37,7 +37,7 @@ async function display(loading = false) {
     const str = loading
       ? 'loading'
       : `expand ${messages._data.chat.unfetched} more`;
-    formatted.splice(1, 0, `  {bold}{underline}... ${str} ...{/}`);
+    formatted.splice(1, 0, format.placehold(str));
   }
 
   messages.setContent(formatted.join('\n'));

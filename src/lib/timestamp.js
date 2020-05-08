@@ -5,8 +5,19 @@ const moment = require('moment');
  *
  * @return {String}
  */
-function get(adjust = 0) {
+function now(adjust = 0) {
   return (Date.now() + adjust).toString() + '000';
+}
+
+/**
+ * get a timestamp usable for fetching "more" of a thing
+ * based on the original most recent timestamp
+ * i.e. parse a string, subtract 1, .toString()
+ *
+ * @param {String} orig
+ */
+function more(orig) {
+  return (parseInt(orig, 10) - 1).toString();
 }
 
 /**
@@ -24,6 +35,7 @@ function from(ts) {
 }
 
 module.exports = {
-  get,
+  now,
   from,
+  more,
 };

@@ -15,7 +15,7 @@ function thread(t) {
     id: t[0][0],
     room: roomMeta(t[0][2]),
     mostRecentAt: t[1],
-    mostRecentReadAt: t[2],
+    mostRecentReadAt: t[2], // can be 0 if none read
     messages,
     isUnread: messages.filter(m => m.isUnread).length,
     unfetched: t[6],

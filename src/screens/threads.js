@@ -36,6 +36,23 @@ async function display(selectLast = true) {
   }
 }
 
+async function up() {
+  if (threads.selected === 0) {
+    const origLen = threads._data.threads.length;
+    threads.unshiftItem(format.placehold());
+    threads.screen.render();
+
+    threads._data.threads = await Chat.moreThreads(threads._data.chat);
+    await display(false);
+    // highlight the oldest most-recently-loaded thread
+    threads.select(threads._data.threads.length - origLen - 1);
+    threads.screen.render();
+  } else {
+    threads.up();
+    threads.screen.render();
+  }
+}
+
 threads.on('keypress', (ch, key) => {
   switch (key.full) {
     case 'C-k':
@@ -55,8 +72,7 @@ threads.on('keypress', (ch, key) => {
       return;
     case 'up':
     case 'k':
-      threads.up();
-      threads.screen.render();
+      up();
       return;
     case 'down':
     case 'j':
