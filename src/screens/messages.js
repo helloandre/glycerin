@@ -45,22 +45,28 @@ async function display(loading = false) {
   messages.screen.render();
 }
 
-async function view(chat) {
-  messages.setContent('Loading...');
-  messages.screen.render();
+async function view(chat, showLoading = true) {
+  // if this object is a unpack.chat and is not a dm
+  // there's no messages for us to display, so ignore
+  if (!chat.room && !chat.isDm) {
+    return;
+  }
+
+  if (showLoading) {
+    messages.setContent('Loading...');
+    messages.screen.render();
+  }
 
   messages._data.chat = chat;
-  messages._data.messages = chat.isDm
-    ? await Chat.messages(chat)
-    : chat.messages || [];
+  messages._data.messages = await Chat.messages(chat);
   display();
 
-  EE.emit('messages.read', chat);
+  Chat.markRead(chat);
 }
 
 EE.on('threads.preview', view);
 EE.on('chats.select', view);
-EE.on('chats.nextUnread', ({ chat }) => view(chat));
+EE.on('chats.nextUnread', view);
 EE.on('threads.blur', () => {
   messages._data = {};
   messages.setContent('Select A Thread');
@@ -104,9 +110,8 @@ EE.on('messages.new', async ({ chat, thread }) => {
     chat.uri === messages._data.chat.uri ||
     (thread && messages._data.chat.id === thread.id)
   ) {
-    messages._data.messages = await Chat.messages(messages._data.chat);
-    EE.emit('messages.read', messages._data.chat);
-    display();
+    Chat.markRead(thread || chat);
+    view(thread || chat, false);
   }
 });
 

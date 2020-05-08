@@ -88,15 +88,17 @@ chats.on('blur', () => {
 });
 EE.on('screen.ready', loadAll);
 EE.on('screen.refresh', loadAll);
-EE.on('chats.nextUnread', ({ chat }) => {
-  if (chat) {
-    select(chat);
-  }
+EE.on('chats.nextUnread', chat => {
+  select(chat.room || chat);
 });
 EE.on('messages.new', ({ chat }) => {
-  const { typeIndex, type } = indexes(chat);
-  chats._data.chats[type][typeIndex].isUnread = true;
-  display();
+  const { typeIndex, type, visibleIndex } = indexes(chat);
+  if (visibleIndex !== chats.selected) {
+    chats._data.chats[type][typeIndex].isUnread = true;
+    display();
+  } else {
+    Chat.markRead(chat);
+  }
 });
 EE.on('input.blur', from => {
   if (from === 'chats') {

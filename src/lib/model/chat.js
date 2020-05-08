@@ -11,10 +11,15 @@ const EE = require('../eventemitter');
 const cache = {};
 /**
  * Array<Object> where Object contains:
- *  - chatUri
- *  - [threadId]
+ *  - {string} - at @see timestamp.now()
+ *  - {unpack.chat} - [chat] { uri }
+ *  - {unpack.thread} - [thread] { id, room: { uri } }
  */
 let unread = [];
+
+// how many chat's we'll auto-fetch data for
+// after that you're on your own because we want fast boot times
+const MAX_UNREAD = 5;
 
 /**
  * Give me all my chats, please
@@ -30,6 +35,8 @@ function getAll() {
   return getChats()
     .then(unpack.chats)
     .then(async chats => {
+      let unreadCount = 0;
+
       // eslint-disable-next-line no-unused-vars
       for (let [type, group] of Object.entries(chats)) {
         for (let chat of group) {
@@ -42,11 +49,13 @@ function getAll() {
           // so we're kinda cheating here
           if (chat.isUnread) {
             if (chat.isDm) {
+              // we get dms for free
               markUnread(chat);
-            } else {
+            } else if (unreadCount < MAX_UNREAD) {
               // this is unfortunate. we're blocking initial load on unread messages :(
               (await threads(chat)).filter(t => t.isUnread).forEach(markUnread);
             }
+            unreadCount++;
           }
         }
       }
@@ -61,57 +70,36 @@ function getAll() {
  * @param {unpack.chat|unpack.thread} obj
  */
 function markRead(obj) {
-  if ('isDm' in obj) {
-    unread = unread.filter(u => u.chatUri !== obj.uri);
-  } else {
-    unread = unread.filter(
-      u => u.chatUri !== obj.room.uri && u.threadId !== obj.id
-    );
-  }
+  unread = unread.filter(u => u.id !== obj.id || u.uri !== obj.uri);
 }
 
 /**
  * some assumptions here:
- *  - we will never give a non-dm chat object
  *
  * @param {unpack.chat|unpack.thread} obj
  */
 async function markUnread(obj) {
-  if ('isDm' in obj) {
-    unread.unshift({ chatUri: obj.uri, at: obj.mostRecentAt });
-  } else {
-    unread.unshift({
-      chatUri: obj.room.uri,
-      threadId: obj.id,
-      at: obj.mostRecentAt,
-    });
-  }
+  unread = [
+    {
+      id: obj.id,
+      uri: obj.uri,
+      room: obj.room,
+      at: parseInt(obj.mostRecentAt, 10),
+    },
+  ]
+    // remove any existing instances so we don't try to come back to it later
+    .concat(unread.filter(u => u.id !== obj.id || u.uri !== obj.uri));
 
   unread.sort((a, b) => (a.at > b.at ? -1 : 1));
 }
 
-async function nextUnread() {
-  if (unread.length === 0) {
-    return { chat: false };
-  }
-
-  const { chatUri, threadId } = unread.shift();
-  const chat = cache[chatUri];
-
-  if (threadId) {
-    // we potentially haven't loaded the threads for this chat yet
-    // so do so now, don't assume chat.threads exists
-    await messages({ id: threadId, room: chat });
-
-    return {
-      chat,
-      thread: _thread(chat, { id: threadId }),
-    };
-  }
-
-  return {
-    chat,
-  };
+/**
+ * get the next unread chat and/or thread
+ *
+ * @return {Object}
+ */
+function nextUnread() {
+  return unread.shift();
 }
 
 /**
@@ -127,11 +115,13 @@ async function nextUnread() {
  * @return {Boolean|unpack.thread}
  */
 async function threads(chat, ignoreCache = false) {
-  if (!cache[chat.uri].threads || ignoreCache) {
-    cache[chat.uri].threads = await _fetchThreads(chat, timestamp.now());
+  const c = _chat(chat);
+  if (!c.threads || ignoreCache || c.refreshNext) {
+    c.refreshNext = false;
+    c.threads = await fetchThreads(chat, timestamp.now());
   }
 
-  return cache[chat.uri].threads;
+  return c.threads;
 }
 
 /**
@@ -151,7 +141,7 @@ async function moreThreads(chat) {
 
   const c = _chat(chat);
   const before = timestamp.more(c.threads[0].mostRecentAt);
-  const more = await _fetchThreads(chat, before);
+  const more = await fetchThreads(chat, before);
   // dedupe threads
   // this is going to be slow when number of threads gets large :(
   c.threads = more.concat(c.threads).reduce((acc, thread) => {
@@ -170,7 +160,7 @@ async function moreThreads(chat) {
  * @param {unpack.chat} chat
  * @param {String} before - @see timestamp.now()
  */
-function _fetchThreads(chat, before) {
+function fetchThreads(chat, before) {
   if (chat.isDm) {
     throw new Error('threads called on a dm');
   }
@@ -189,13 +179,13 @@ function _fetchThreads(chat, before) {
  * get messages for a chat or thread.
  *
  * @param {unpack.chat|unpack.thread} obj
- * @param {Boolean} force
+ * @param {Boolean} ignoreCache
  */
 async function messages(obj, ignoreCache = false) {
   // obj is unpack.chat
   if (obj.isDm) {
     if (!cache[obj.uri].messages || ignoreCache) {
-      cache[obj.uri].messages = await _fetchMessages(obj, timestamp.now());
+      cache[obj.uri].messages = await fetchMessages(obj, timestamp.now());
     }
 
     return cache[obj.uri].messages;
@@ -209,7 +199,7 @@ async function messages(obj, ignoreCache = false) {
   const thread = _thread(obj.room, obj);
   if (!thread.messages || ignoreCache) {
     // this mutates cache
-    thread.messages = await _fetchMessages(obj, timestamp.now());
+    thread.messages = await fetchMessages(obj, timestamp.now());
   }
 
   return thread.messages;
@@ -234,20 +224,25 @@ function _thread(c, { id }) {
   // it will have a buuuunch of empty fields, but things that
   // rely on that should be resilient enough to handle it
   if (!chat.threads) {
-    chat.threads = [
-      {
-        id,
-        room: { uri: c.uri, id: c.id, displayName: c.displayName },
-        messages: [],
-      },
-    ];
+    chat.threads = [newThread(c, id)];
+    chat.refreshNext = true;
   }
 
-  // there shouldn't be a situation where idx is -1
-  // so we're going to operate under that assumption :)
   const idx = chat.threads.findIndex(t => t.id === id);
+  if (idx === -1) {
+    chat.threads.push(newThread(c, id));
+  }
   // i can't be bothered to figure out if chat.threads.find() returns by value or reference
   return chat.threads[idx];
+}
+
+function newThread(chat, id) {
+  return {
+    id,
+    room: { uri: chat.uri, id: chat.id, displayName: chat.displayName },
+    messages: [],
+    total: 0,
+  };
 }
 
 function _chat({ uri }) {
@@ -260,7 +255,7 @@ function _chat({ uri }) {
  * @param {unpack.thread|unpack.chat} obj
  * @param {String} before - @see timestamp.now()
  */
-function _fetchMessages(obj, before) {
+function fetchMessages(obj, before) {
   return obj.isDm
     ? getChatMessages(obj, before).then(rawMessages => {
         // each "message" looks like a single-message thread
@@ -298,19 +293,14 @@ EE.once('chats.loaded', () => {
         const thread = _thread(evt.room, evt.thread);
         thread.messages.push(msg);
         thread.mostRecentAt = timestamp.now();
-        thread.messages.total++;
-        thread.messages.isUnread = true;
+        thread.total++;
         thread.isUnread = true;
 
-        markUnread({
-          mostRecentAt: evt.mostRecentAt,
-          id: evt.thread.id,
-          room: evt.room,
-        });
+        markUnread(thread);
         // but we still want to tell screens/chats about it
         EE.emit('messages.new', {
-          chat: evt.room,
-          thread: evt.thread,
+          chat: _chat(evt.room),
+          thread: thread,
         });
       } else {
         // if we haven't fetched dm messages yet, don't do so now
@@ -321,7 +311,7 @@ EE.once('chats.loaded', () => {
           c.isUnread = true;
         }
         markUnread(c);
-        EE.emit('messages.new', { chat: evt.room });
+        EE.emit('messages.new', { chat: c });
       }
     } catch (e) {
       console.log(e);

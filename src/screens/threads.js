@@ -146,12 +146,17 @@ EE.on('chats.select', async chat => {
     threads.setItems(['Loading...']);
     threads.screen.render();
 
-    threads._data = { chat, threads: toArray(await Chat.threads(chat)) };
+    threads._data = { chat, threads: await Chat.threads(chat) };
     await display();
   }
 });
-EE.on('chats.nextUnread', async ({ chat, thread }) => {
-  if (thread) {
+EE.on('chats.nextUnread', async chat => {
+  if (chat.room) {
+    if (!threads._data.chat || chat.room.uri !== threads._data.chat.uri) {
+      threads.setItems(['Loading...']);
+      threads.screen.render();
+    }
+
     threads.style.selected = {
       fg: 'black',
       bg: 'grey',
@@ -160,17 +165,13 @@ EE.on('chats.nextUnread', async ({ chat, thread }) => {
       fg: 'grey',
     };
 
-    if (!threads._data.chat || chat.uri !== threads._data.chat.uri) {
-      threads.setItems(['Loading...']);
-      threads.screen.render();
-
-      threads._data = { chat, threads: toArray(await Chat.threads(chat)) };
-    } else {
-      threads._data.threads = toArray(await Chat.threads(chat));
-    }
+    threads._data = {
+      chat: chat.room,
+      threads: await Chat.threads(chat.room),
+    };
 
     await display(false);
-    const idx = threads._data.threads.findIndex(t => t.id === thread.id);
+    const idx = threads._data.threads.findIndex(t => t.id === chat.id);
     // we need to manually trigger `select item` as blessed doesn't think
     // anything's changed here
     if (idx === threads.selected) {
@@ -180,11 +181,13 @@ EE.on('chats.nextUnread', async ({ chat, thread }) => {
     }
     threads.screen.render();
   } else if (chat) {
+    // we have an unread, but it's a DM
     threads._data = {};
     threads.setItems(['Select A Room']);
     threads.screen.render();
   }
 });
+
 EE.on('input.blur', from => {
   if (from === 'threads') {
     threads.focus();
@@ -192,9 +195,7 @@ EE.on('input.blur', from => {
 });
 EE.on('screen.refresh', async () => {
   if (threads._data && threads._data.chat) {
-    threads._data.threads = toArray(
-      await Chat.threads(threads._data.chat, true)
-    );
+    threads._data.threads = await Chat.threads(threads._data.chat, true);
   }
 });
 EE.on('messages.new', async ({ chat, thread }) => {
@@ -203,22 +204,12 @@ EE.on('messages.new', async ({ chat, thread }) => {
   }
 
   if (threads._data.chat.uri === chat.uri) {
-    threads._data.threads = toArray(await Chat.threads(chat));
+    threads._data.threads = await Chat.threads(chat);
     const idx = threads._data.threads.findIndex(t => t.id === thread.id);
     threads.setItem(idx, await format.thread(threads._data.threads[idx]));
+    Chat.markRead(thread);
   }
 });
-EE.on('messages.sent', async () => {
-  threads._data.threads[threads.selected].total++;
-  threads.setItem(
-    threads.selected,
-    await format.thread(threads._data.threads[threads.selected])
-  );
-});
-
-function toArray(ts) {
-  return Object.entries(ts).map(t => t[1]);
-}
 
 module.exports = {
   threads,

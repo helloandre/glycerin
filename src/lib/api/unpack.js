@@ -285,7 +285,7 @@ function _event_thread(data) {
       if (data[0][3][2].length === 1) {
         return {
           room: {
-            uri: `dm/${data[0][3][2][0][0]}`,
+            uri: `space/${data[0][3][2][0][0]}`,
             id: data[0][3][2][0][0],
           },
           thread: {
