@@ -32,9 +32,11 @@ async function thread(t) {
       ? '99+'
       : `${t.total.toString().padEnd(3, ' ')}`
     : '+  ';
-  const prefixStr = t.isUnread ? `{bold}${countStr}{/bold}` : countStr;
+  const prefixStr = t.isUnread
+    ? `{bold}${countStr}{/bold}`
+    : `{grey-fg}${countStr}{/grey-fg}`;
   const preview = await message(t.messages[0], true);
-  return `${prefixStr}>${preview}`;
+  return `${prefixStr} ${preview}`;
 }
 
 /**
@@ -51,7 +53,7 @@ async function message(msg, truncate = false) {
   const text = textFromMsg(msg.text);
   const name = await User.name(msg.user);
 
-  return `${ts.format('YYYY-MM-DD hh:mma')}> ${name}: ${
+  return `{grey-fg}${ts.format('YYYY-MM-DD hh:mma')}>{/grey-fg} ${name}: ${
     truncate ? msg.text.raw.split('\n').shift() : text
   }`;
 }

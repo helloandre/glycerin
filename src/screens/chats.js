@@ -2,6 +2,12 @@ const blessed = require('neo-blessed');
 const Chat = require('../lib/model/chat');
 const EE = require('../lib/eventemitter');
 const format = require('../lib/format');
+const {
+  COLORS_ACTIVE_ITEM,
+  COLORS_ACTIVE_SELECTED,
+  COLORS_INACTIVE_ITEM,
+  COLORS_INACTIVE_SELECTED,
+} = require('../../constants');
 
 const DEFAULT_DISPLAY_LIMIT = 5;
 
@@ -14,9 +20,8 @@ const chats = blessed.list({
     type: 'line',
   },
   style: {
-    selected: {
-      bg: 'grey',
-    },
+    item: COLORS_ACTIVE_ITEM,
+    selected: COLORS_ACTIVE_SELECTED,
   },
   search: find => {
     const search = chats.screen.getSearch();
@@ -67,23 +72,13 @@ chats.on('keypress', (ch, key) => {
 });
 
 chats.on('focus', () => {
-  chats.style.selected = {
-    fg: 'white',
-    bg: 'grey',
-  };
-  chats.style.item = {
-    fg: 'white',
-  };
+  chats.style.item = COLORS_ACTIVE_ITEM;
+  chats.style.selected = COLORS_ACTIVE_SELECTED;
   chats.screen.render();
 });
 chats.on('blur', () => {
-  chats.style.selected = {
-    fg: 'black',
-    bg: 'grey',
-  };
-  chats.style.item = {
-    fg: 'grey',
-  };
+  chats.style.item = COLORS_INACTIVE_ITEM;
+  chats.style.selected = COLORS_INACTIVE_SELECTED;
   chats.screen.render();
 });
 EE.on('screen.ready', loadAll);

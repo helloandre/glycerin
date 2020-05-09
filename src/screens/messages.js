@@ -26,6 +26,12 @@ const messages = blessed.box({
 messages._data = {};
 
 async function display(loading = false) {
+  if (!messages._data.messages.length) {
+    messages.setContent(format.placehold('no messages, yet'));
+    messages.screen.render();
+    return;
+  }
+
   const formatted = [];
 
   for (let msg of messages._data.messages) {

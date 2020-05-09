@@ -259,12 +259,17 @@ function _chat({ uri }) {
 function fetchMessages(obj, before) {
   return obj.isDm
     ? getChatMessages(obj, before).then(rawMessages => {
-        // each "message" looks like a single-message thread
-        // so... let's flatten that
-        const unpacked = rawMessages.map(m => unpack.message(m[4][0]));
-        unpacked.forEach(u => User.prefetch(u.user));
+        // empty messages returns null
+        if (rawMessages) {
+          // each "message" looks like a single-message thread
+          // so... let's flatten that
+          const unpacked = rawMessages.map(m => unpack.message(m[4][0]));
+          unpacked.forEach(u => User.prefetch(u.user));
 
-        return unpacked;
+          return unpacked;
+        }
+
+        return [];
       })
     : getThreadMessages(obj, before).then(rawMessages => {
         const messages = rawMessages.map(unpack.message);

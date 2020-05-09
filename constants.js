@@ -25,6 +25,21 @@ const ACTIONID_SEND_CHAT_MESSAGE = '120594192';
 // const ACTIONID_WHOAMI = '115617453'; // [[[115617453,[{"115617453":[]}],null,null,0]]]
 // const ACTIONID_CHAT_MEMBERS = '115617454'; // [[[115617454,[{"115617454":[["space/AAAAnDXy3Ws","AAAAnDXy3Ws",2],true]}],null,null,0]]]
 
+const COLORS_ACTIVE_ITEM = {
+  fg: 'white',
+};
+const COLORS_ACTIVE_SELECTED = {
+  fg: 'white',
+  bg: 'grey',
+};
+const COLORS_INACTIVE_ITEM = {
+  fg: 'grey',
+};
+const COLORS_INACTIVE_SELECTED = {
+  fg: '#111111',
+  bg: 'grey',
+};
+
 module.exports = {
   URL_DATA,
   URL_MUTATE,
@@ -39,4 +54,8 @@ module.exports = {
   ACTIONID_SEND_CHAT_MESSAGE,
   ACTIONID_SEND_THREAD_MESSAGE,
   ACTIONID_CREATE_THREAD,
+  COLORS_ACTIVE_ITEM,
+  COLORS_ACTIVE_SELECTED,
+  COLORS_INACTIVE_ITEM,
+  COLORS_INACTIVE_SELECTED,
 };

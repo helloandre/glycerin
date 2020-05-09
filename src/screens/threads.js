@@ -2,6 +2,12 @@ const blessed = require('neo-blessed');
 const format = require('../lib/format');
 const Chat = require('../lib/model/chat');
 const EE = require('../lib/eventemitter');
+const {
+  COLORS_ACTIVE_ITEM,
+  COLORS_ACTIVE_SELECTED,
+  COLORS_INACTIVE_ITEM,
+  COLORS_INACTIVE_SELECTED,
+} = require('../../constants');
 
 const threads = blessed.list({
   label: 'Threads',
@@ -12,6 +18,7 @@ const threads = blessed.list({
   border: {
     type: 'line',
   },
+  // do not set a default style
   items: ['Select A Room'],
   // mouse: true,
   // keys: true,
@@ -117,26 +124,16 @@ threads.on('keypress', (ch, key) => {
   }
 });
 threads.on('focus', () => {
-  threads.style.selected = {
-    fg: 'white',
-    bg: 'grey',
-  };
-  threads.style.item = {
-    fg: 'white',
-  };
+  threads.style.item = COLORS_ACTIVE_ITEM;
+  threads.style.selected = COLORS_ACTIVE_SELECTED;
   threads.screen.render();
 });
 threads.on('blur', () => {
   if (threads._data.chat) {
-    threads.style.selected = {
-      fg: 'black',
-      bg: 'grey',
-    };
-    threads.style.item = {
-      fg: 'grey',
-    };
+    threads.style.item = COLORS_INACTIVE_ITEM;
+    threads.style.selected = COLORS_INACTIVE_SELECTED;
+    threads.screen.render();
   }
-  threads.screen.render();
 });
 threads.on('select item', () => {
   if (threads._data.chat) {
@@ -160,13 +157,8 @@ EE.on('chats.nextUnread', async chat => {
       threads.screen.render();
     }
 
-    threads.style.selected = {
-      fg: 'black',
-      bg: 'grey',
-    };
-    threads.style.item = {
-      fg: 'grey',
-    };
+    threads.style.item = COLORS_INACTIVE_ITEM;
+    threads.style.selected = COLORS_INACTIVE_SELECTED;
 
     threads._data = {
       chat: chat.room,

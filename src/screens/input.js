@@ -107,12 +107,17 @@ EE.on('threads.select', thread => {
   input.focus();
   input.screen.render();
 });
-EE.on('chats.nextUnread', ({ thread }) => {
-  if (thread) {
-    input._data = {
-      thread,
-      from: 'threads',
-    };
+EE.on('chats.nextUnread', chat => {
+  if (chat) {
+    input._data = chat.room
+      ? {
+          thread: chat,
+          from: 'threads',
+        }
+      : {
+          chat,
+          from: 'chats',
+        };
     input.focus();
     input.screen.render();
   }
