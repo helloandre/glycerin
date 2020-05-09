@@ -2,6 +2,7 @@ const blessed = require('neo-blessed');
 const EE = require('../lib/eventemitter');
 const sendChatMessage = require('../lib/api/send-chat-message');
 const sendThreadMessage = require('../lib/api/send-thread-message');
+const createThread = require('../lib/api/create-thread');
 const Chat = require('../lib/model/chat');
 
 const input = blessed.textbox({
@@ -26,7 +27,7 @@ input.on('keypress', async (ch, key) => {
     case 'C-k':
       EE.emit('messages.scroll.up');
       return;
-    case 'linefeed':
+    case 'linefeed': // C-j
       EE.emit('messages.scroll.down');
       return;
     case 'C-g':
@@ -60,6 +61,8 @@ input.on('focus', () => {
         // we get an event when the message is sent
         if (input._data.from === 'chats') {
           sendChatMessage(value, input._data.chat);
+        } else if (input._data.new) {
+          createThread(value, input._data.chat);
         } else {
           sendThreadMessage(value, input._data.thread);
         }
@@ -77,6 +80,15 @@ input.on('focus', () => {
   });
 });
 
+EE.on('threads.new', chat => {
+  input._data = {
+    chat,
+    new: true,
+    from: 'threads',
+  };
+  input.focus();
+  input.screen.render();
+});
 EE.on('chats.select', chat => {
   if (chat.isDm) {
     input._data = {
@@ -103,6 +115,15 @@ EE.on('chats.nextUnread', ({ thread }) => {
     };
     input.focus();
     input.screen.render();
+  }
+});
+EE.on('messages.new', ({ thread }) => {
+  // we just created a new thread, need to update our info
+  if (input._data.new) {
+    input._data = {
+      thread,
+      from: 'threads',
+    };
   }
 });
 

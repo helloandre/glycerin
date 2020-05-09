@@ -231,6 +231,7 @@ function _thread(c, { id }) {
   const idx = chat.threads.findIndex(t => t.id === id);
   if (idx === -1) {
     chat.threads.push(newThread(c, id));
+    return chat.threads[chat.threads.length - 1];
   }
   // i can't be bothered to figure out if chat.threads.find() returns by value or reference
   return chat.threads[idx];

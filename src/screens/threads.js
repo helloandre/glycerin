@@ -55,6 +55,9 @@ async function up() {
 
 threads.on('keypress', (ch, key) => {
   switch (key.full) {
+    case 'C-c':
+      EE.emit('threads.new', threads._data.chat);
+      return;
     case 'C-k':
       EE.emit('messages.scroll.up');
       return;
@@ -191,6 +194,7 @@ EE.on('chats.nextUnread', async chat => {
 EE.on('input.blur', from => {
   if (from === 'threads') {
     threads.focus();
+    EE.emit('threads.preview', threads.thread());
   }
 });
 EE.on('screen.refresh', async () => {
@@ -206,7 +210,12 @@ EE.on('messages.new', async ({ chat, thread }) => {
   if (threads._data.chat.uri === chat.uri) {
     threads._data.threads = await Chat.threads(chat);
     const idx = threads._data.threads.findIndex(t => t.id === thread.id);
-    threads.setItem(idx, await format.thread(threads._data.threads[idx]));
+    if (idx >= threads.items.length) {
+      threads.appendItem(await format.thread(threads._data.threads[idx]));
+      threads.select(idx);
+    } else {
+      threads.setItem(idx, await format.thread(threads._data.threads[idx]));
+    }
     Chat.markRead(thread);
   }
 });

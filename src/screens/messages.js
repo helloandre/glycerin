@@ -64,9 +64,22 @@ async function view(chat, showLoading = true) {
   Chat.markRead(chat);
 }
 
-EE.on('threads.preview', view);
+EE.on('threads.preview', chat => {
+  if (
+    !messages._data.chat ||
+    chat.uri !== messages._data.chat.uri ||
+    chat.id !== messages._data.chat.id
+  ) {
+    view(chat);
+  }
+});
 EE.on('chats.select', view);
 EE.on('chats.nextUnread', view);
+EE.on('threads.new', () => {
+  messages._data = {};
+  messages.setContent('New Thread');
+  messages.screen.render();
+});
 EE.on('threads.blur', () => {
   messages._data = {};
   messages.setContent('Select A Thread');
