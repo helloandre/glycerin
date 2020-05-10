@@ -17,8 +17,8 @@
 
 ## Helpful One-offs
 
-- Quickly leave a bunch of rooms:
-  - `yarn rooms`
+- Quickly leave a bunch of rooms and/or dms:
+  - `yarn leave`
 
 # Key Bindings
 

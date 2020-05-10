@@ -3,6 +3,7 @@ const Chat = require('../lib/model/chat');
 const User = require('../lib/model/user');
 const format = require('../lib/format');
 const setRoomMembership = require('../lib/api/set-room-membership');
+const hideChat = require('../lib/api/hide-chat');
 const {
   COLORS_ACTIVE_ITEM,
   COLORS_ACTIVE_SELECTED,
@@ -19,25 +20,45 @@ const screen = blessed.screen({
   },
 });
 const prune = blessed.box({
+  label: 'Select Chats To Leave/Hide. "spacebar" to select, "enter" when done.',
   height: '100%',
   width: '100%',
   top: 0,
   left: 0,
+  border: {
+    type: 'bg',
+  },
 });
 const rooms = blessed.list({
-  label: 'Select Rooms To Leave. "spacebar" to select, "enter" when done.',
   top: 0,
   left: 0,
   height: '100%',
-  width: '100%',
+  width: '50%',
   tags: true,
   keys: true,
+  vi: true,
   border: {
     type: 'line',
   },
   style: {
     item: COLORS_ACTIVE_ITEM,
     selected: COLORS_ACTIVE_SELECTED,
+  },
+});
+const dms = blessed.list({
+  top: 0,
+  left: '50%',
+  height: '100%',
+  width: '50%',
+  tags: true,
+  keys: true,
+  vi: true,
+  border: {
+    type: 'line',
+  },
+  style: {
+    item: COLORS_INACTIVE_ITEM,
+    selected: COLORS_INACTIVE_SELECTED,
   },
 });
 const confirm = blessed.question({
@@ -70,13 +91,19 @@ const progress = blessed.progressbar({
   filled: 0,
 });
 rooms._data = {};
+dms._data = {};
 screen.append(prune);
 screen.append(confirm);
 screen.append(progress);
 prune.append(rooms);
+prune.append(dms);
 
 screen.on('keypress', (ch, key) => {
   switch (key.full) {
+    case 'left':
+      return rooms.focus();
+    case 'right':
+      return dms.focus();
     case 'enter':
       return leave();
     case 'space':
@@ -92,6 +119,21 @@ rooms.on('blur', () => {
   rooms.style.selected = COLORS_INACTIVE_SELECTED;
   screen.render();
 });
+rooms.on('focus', () => {
+  rooms.style.item = COLORS_ACTIVE_ITEM;
+  rooms.style.selected = COLORS_ACTIVE_SELECTED;
+  screen.render();
+});
+dms.on('blur', () => {
+  dms.style.item = COLORS_INACTIVE_ITEM;
+  dms.style.selected = COLORS_INACTIVE_SELECTED;
+  screen.render();
+});
+dms.on('focus', () => {
+  dms.style.item = COLORS_ACTIVE_ITEM;
+  dms.style.selected = COLORS_ACTIVE_SELECTED;
+  screen.render();
+});
 
 function bootstrap() {
   rooms.focus();
@@ -100,23 +142,32 @@ function bootstrap() {
 
   Chat.getGrouped().then(chats => {
     rooms._data.rooms = chats.rooms;
+    dms._data.dms = chats.dms;
     display();
   });
 }
 
 function toggle() {
-  rooms._data.rooms[rooms.selected].checked = !rooms._data.rooms[rooms.selected]
-    .checked;
+  if (screen.focused === rooms) {
+    rooms._data.rooms[rooms.selected].checked = !rooms._data.rooms[
+      rooms.selected
+    ].checked;
+  } else {
+    dms._data.dms[dms.selected].checked = !dms._data.dms[dms.selected].checked;
+  }
   display();
 }
 
 function display() {
   rooms.setItems(rooms._data.rooms.map(format.checkbox));
+  dms.setItems(dms._data.dms.map(format.checkbox));
   screen.render();
 }
 
 async function leave() {
-  const toLeave = rooms._data.rooms.filter(r => r.checked);
+  const toLeave = rooms._data.rooms
+    .filter(r => r.checked)
+    .concat(dms._data.dms.filter(d => d.checked));
   if (!toLeave.length || screen.focused === confirm) {
     return;
   }
@@ -131,17 +182,18 @@ async function leave() {
 
       const user = await User.whoami();
       for (let idx in toLeave) {
-        await setRoomMembership(toLeave[idx], user, false);
+        if (toLeave[idx].isDm) {
+          await hideChat(toLeave[idx]);
+        } else {
+          await setRoomMembership(toLeave[idx], user, false);
+        }
         progress.setProgress(((idx + 1) / toLeave.length) * 100);
         screen.render();
       }
       progress.hide();
 
-      confirm.ask(
-        `Left ${toLeave.legnth} rooms. Press any key to close.`,
-        () => {
-          process.exit();
-        }
+      confirm.ask(`Left ${toLeave.length} rooms. Press any key to close.`, () =>
+        process.exit(0)
       );
       confirm.focus();
     }

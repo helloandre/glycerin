@@ -26,6 +26,6 @@
     "debug": "PUPPETEER_PRODUCT=firefox node --inspect-brk index.js",
     "ev": "PUPPETEER_PRODUCT=firefox node index.js -e",
     "de": "PUPPETEER_PRODUCT=firefox node --inspect-brk index.js -e",
-    "rooms": "PUPPETEER_PRODUCT=firefox node index.js rooms"
+    "leave": "PUPPETEER_PRODUCT=firefox node index.js leave"
   }
 }
