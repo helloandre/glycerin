@@ -6,11 +6,19 @@
 
 # Usage
 
-## Running
+## Install
 
 - install: `yarn bootstrap` [^1]
+
+## Running
+
 - run: `yarn start`
 - watch events go by: `yarn ev`
+
+## Helpful One-offs
+
+- Quickly leave a bunch of rooms:
+  - `yarn rooms`
 
 # Key Bindings
 
@@ -19,6 +27,8 @@
 - `ctrl+d` - exit
 - `ctrl+r` - reload chats/threads/messages
 - `ctrl+n` - go to the newest unread message
+- `ctrl+o` - find rooms to join
+- `ctrl+f` - find rooms/dms already joined
 
 ### Chats
 

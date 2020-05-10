@@ -9,7 +9,7 @@ Glycerin - Google Chat Terminal User Interface
 
 Usage:
   gln [options]
-  gln prune [options]
+  gln rooms [options]
   gln run [options] <req>
 
 Options:
@@ -27,7 +27,7 @@ auth.init(opts).then(() => {
     EE.on('events.*', evt => {
       console.log(evt);
     });
-  } else if (opts.prune) {
+  } else if (opts.rooms) {
     const Prune = require('./src/screens/prune');
     Prune.bootstrap();
   } else if (opts.run) {
