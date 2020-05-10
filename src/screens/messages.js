@@ -59,7 +59,7 @@ async function view(chat, showLoading = true) {
   }
 
   if (showLoading) {
-    messages.setContent('Loading...');
+    messages.setContent(format.placehold());
     messages.screen.render();
   }
 

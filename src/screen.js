@@ -20,7 +20,7 @@ function bootstrap() {
   const { threads } = require('./screens/threads');
   const { messages } = require('./screens/messages');
   const { input } = require('./screens/input');
-  // const { search } = require('./screens/search');
+  const { search } = require('./screens/search');
 
   /**
    * add all our objects to the screen
@@ -29,7 +29,7 @@ function bootstrap() {
   screen.append(threads);
   screen.append(messages);
   screen.append(input);
-  // screen.append(search);
+  screen.append(search);
 
   // initial focus given to sidebar to select a chat room
   chats.focus();
@@ -37,6 +37,10 @@ function bootstrap() {
   screen.title = 'GChat TUI';
   screen.on('keypress', async (ch, key) => {
     switch (key.full) {
+      case 'C-f':
+        return EE.emit('chats.search.local');
+      case 'C-o':
+        return EE.emit('chats.search.remote');
       case 'C-d':
         return process.exit(0);
       case 'C-r':
@@ -45,12 +49,6 @@ function bootstrap() {
         return EE.emit('chats.nextUnread', await Chat.nextUnread());
     }
   });
-
-  screen.getChats = () => screen.children[0];
-  screen.getThreads = () => screen.children[1];
-  screen.getMessages = () => screen.children[2];
-  screen.getInput = () => screen.children[3];
-  // screen.getSearch = () => screen.children[4];
 
   EE.emit('screen.ready');
 }

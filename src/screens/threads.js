@@ -44,7 +44,7 @@ async function display(selectLast = true) {
 }
 
 async function up() {
-  if (threads.selected === 0) {
+  if (threads.selected === 0 && !threads._data.searchPreview) {
     const origLen = threads._data.threads.length;
     threads.unshiftItem(format.placehold());
     threads.screen.render();
@@ -63,7 +63,9 @@ async function up() {
 threads.on('keypress', (ch, key) => {
   switch (key.full) {
     case 'C-c':
-      EE.emit('threads.new', threads._data.chat);
+      if (!threads._data.searchPreview) {
+        EE.emit('threads.new', threads._data.chat);
+      }
       return;
     case 'C-k':
       EE.emit('messages.scroll.up');
@@ -100,26 +102,29 @@ threads.on('keypress', (ch, key) => {
     case 'enter':
     case 'right':
     case 'v':
-      threads.style.selected = {
-        fg: 'black',
-        bg: 'grey',
-      };
-      threads.style.item = {
-        fg: 'grey',
-      };
-      EE.emit('threads.select', threads.thread());
+      // if we're previewing, we cannot "select" a thread
+      // but we can still nagivate messages
+      if (!threads._data.searchPreview) {
+        threads.style.item = COLORS_INACTIVE_ITEM;
+        threads.style.selected = COLORS_INACTIVE_SELECTED;
+        EE.emit('threads.select', threads.thread());
+      } else if (key.full === 'enter') {
+        EE.emit('chats.join', threads._data.chat);
+      }
       return;
     case 'escape':
     case 'left':
     case 'q':
-      threads.screen.render();
-      threads.style.selected = {
-        fg: 'white',
-        bg: undefined,
-      };
+      threads.style.item = COLORS_INACTIVE_ITEM;
+      threads.style.selected = COLORS_INACTIVE_SELECTED;
+      EE.emit('threads.blur', threads._data.searchPreview);
+
+      // needs to be done before setItems() otherwise we attempt
+      // to threads.preview as a "set item" even gets triggered
       threads._data = {};
       threads.setItems(['Select A Room']);
-      EE.emit('threads.blur');
+      threads.screen.render();
+
       return;
   }
 });
@@ -143,7 +148,7 @@ threads.on('select item', () => {
 EE.on('chats.select', async chat => {
   if (!chat.isDm) {
     threads.focus();
-    threads.setItems(['Loading...']);
+    threads.setItems([format.placehold()]);
     threads.screen.render();
 
     threads._data = { chat, threads: await Chat.threads(chat) };
@@ -153,7 +158,7 @@ EE.on('chats.select', async chat => {
 EE.on('chats.nextUnread', async chat => {
   if (chat.room) {
     if (!threads._data.chat || chat.room.uri !== threads._data.chat.uri) {
-      threads.setItems(['Loading...']);
+      threads.setItems([format.placehold()]);
       threads.screen.render();
     }
 
@@ -181,6 +186,18 @@ EE.on('chats.nextUnread', async chat => {
     threads.setItems(['Select A Room']);
     threads.screen.render();
   }
+});
+EE.on('chats.searchPreview', async chat => {
+  threads.focus();
+  threads.setItems([format.placehold()]);
+  threads.screen.render();
+
+  threads._data = {
+    chat,
+    searchPreview: true,
+    threads: await Chat.preview(chat),
+  };
+  display();
 });
 
 EE.on('input.blur', from => {

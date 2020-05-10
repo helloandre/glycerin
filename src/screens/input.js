@@ -131,6 +131,14 @@ EE.on('messages.new', ({ thread }) => {
     };
   }
 });
+EE.on('chats.searchPreview', chat => {
+  input.setValue(`press "enter" again to join "${chat.displayName}"`);
+  input.screen.render();
+});
+EE.on('threads.blur', () => {
+  input.clearValue();
+  input.screen.render();
+});
 
 module.exports = {
   input,

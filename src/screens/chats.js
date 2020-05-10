@@ -23,16 +23,6 @@ const chats = blessed.list({
     item: COLORS_ACTIVE_ITEM,
     selected: COLORS_ACTIVE_SELECTED,
   },
-  search: find => {
-    const search = chats.screen.getSearch();
-
-    search.setFront();
-    search.focus();
-    search.readInput('Search', '', (err, val) => {
-      find(err, val);
-      search.setBack();
-    });
-  },
 });
 chats._data = { chats: {}, expanded: [] };
 
@@ -40,6 +30,10 @@ chats.on('keypress', (ch, key) => {
   const selected = chats._data.visible[chats.selected];
 
   switch (key.full) {
+    case 'C-l':
+      EE.emit('chats.leave', selected);
+      // TODO remove from list
+      return;
     case 'j':
     case 'down':
       chats.down();
@@ -83,6 +77,10 @@ chats.on('blur', () => {
 });
 EE.on('screen.ready', loadAll);
 EE.on('screen.refresh', loadAll);
+EE.on('search.blur', () => {
+  chats.focus();
+  chats.screen.render();
+});
 EE.on('chats.nextUnread', chat => {
   select(chat.room || chat);
 });
@@ -100,8 +98,10 @@ EE.on('input.blur', from => {
     chats.focus();
   }
 });
-EE.on('threads.blur', () => {
-  chats.focus();
+EE.on('threads.blur', fromPreview => {
+  if (!fromPreview) {
+    chats.focus();
+  }
 });
 
 function expand(t) {
@@ -204,10 +204,10 @@ function display() {
 }
 
 async function loadAll() {
-  chats.setItems(['Loading...']);
+  chats.setItems([format.placehold()]);
   chats.screen.render();
 
-  chats._data.chats = await Chat.getAll();
+  chats._data.chats = await Chat.getGrouped();
   display();
   EE.emit('chats.loaded');
 }

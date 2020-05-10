@@ -1,8 +1,24 @@
 const getUsers = require('../api/get-users');
+const wai = require('../api/whoami');
 const unpack = require('../api/unpack');
 
 const cache = {};
 let dirty = [];
+let _self;
+
+/**
+ * fetch a result from a "whoami" api
+ */
+async function whoami() {
+  if (!_self) {
+    _self = await wai().then(unpack.user);
+    if (!cache[_self.id]) {
+      cache[_self.id] = _self;
+    }
+  }
+
+  return _self;
+}
 
 /**
  * Tell the cache about a user we've seen in a thread/dm
@@ -55,4 +71,5 @@ function name(user) {
 module.exports = {
   prefetch,
   name,
+  whoami,
 };

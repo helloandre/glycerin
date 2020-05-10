@@ -3,6 +3,7 @@ const getChats = require('../api/get-chats');
 const getChatThreads = require('../api/get-chat-threads');
 const getChatMessages = require('../api/get-chat-messages');
 const getThreadMessages = require('../api/get-thread-messages');
+const setRoomMembership = require('../api/set-room-membership');
 const unpack = require('../api/unpack');
 const User = require('./user');
 const EE = require('../eventemitter');
@@ -11,9 +12,10 @@ const EE = require('../eventemitter');
 const cache = {};
 /**
  * Array<Object> where Object contains:
- *  - {string} - at @see timestamp.now()
- *  - {unpack.chat} - [chat] { uri }
- *  - {unpack.thread} - [thread] { id, room: { uri } }
+ *  - at @see timestamp.now()
+ *  - id
+ *  - uri - only on chats
+ *  - room - only on threads
  */
 let unread = [];
 
@@ -31,7 +33,7 @@ const MAX_UNREAD = 5;
  *
  * @see unpack.chats
  */
-function getAll() {
+function getGrouped() {
   return getChats()
     .then(unpack.chats)
     .then(async chats => {
@@ -62,6 +64,15 @@ function getAll() {
 
       return chats;
     });
+}
+
+/**
+ * this assumes getGrouped has been called
+ *
+ * @return {Array<unpack.chat>}
+ */
+function getAll() {
+  return Object.entries(cache).map(c => c[1]);
 }
 
 /**
@@ -125,6 +136,16 @@ async function threads(chat, ignoreCache = false) {
 }
 
 /**
+ * this never caches fetched threads,
+ * assumes chat does not exist in cache
+ *
+ * @param {unpack.chat} chat
+ */
+function preview(chat) {
+  return fetchThreads(chat);
+}
+
+/**
  * threads are fetched based on the most recent message sent to it
  * meaning that as time progresses we don't have a "static" pagination
  * it's constantly a moving target.
@@ -159,13 +180,16 @@ async function moreThreads(chat) {
  *
  * @param {unpack.chat} chat
  * @param {String} before - @see timestamp.now()
+ * @param {Boolean} preview [default: false]
+ *
+ * @return {Array<unpack.thread>}
  */
-function fetchThreads(chat, before) {
+function fetchThreads(chat, before, preview = false) {
   if (chat.isDm) {
     throw new Error('threads called on a dm');
   }
 
-  return getChatThreads(chat, before).then(ts => {
+  return getChatThreads(chat, before, preview).then(ts => {
     const unpacked = ts.map(unpack.thread).filter(t => !t.isMembershipUpdate);
     // we have to let the users cache know about all the users we just saw
     // so that when we go to display them we fetch all at once
@@ -197,8 +221,9 @@ async function messages(obj, ignoreCache = false) {
 
   // obj is unpack.thread
   const thread = _thread(obj.room, obj);
-  if (!thread.messages || ignoreCache) {
+  if (!thread.messages || thread.refreshNext || ignoreCache) {
     // this mutates cache
+    thread.refreshNext = false;
     thread.messages = await fetchMessages(obj, timestamp.now());
   }
 
@@ -214,9 +239,8 @@ async function messages(obj, ignoreCache = false) {
 function _thread(c, { id }) {
   const chat = _chat(c);
   if (!chat) {
-    // nothign we can really do if you're trying to read threads
-    // if we don't know anything about this chat yet
-    throw Error(`unknown chat ${c.uri}`);
+    // we're previewing a chat + thread, so this is temporary
+    return newThread(c, id);
   }
 
   // if we haven't called threads() yet, we can fake it
@@ -243,6 +267,7 @@ function newThread(chat, id) {
     room: { uri: chat.uri, id: chat.id, displayName: chat.displayName },
     messages: [],
     total: 0,
+    refreshNext: true,
   };
 }
 
@@ -284,6 +309,15 @@ function fetchMessages(obj, before) {
         return messages;
       });
 }
+
+EE.on('chats.join', async chat => {
+  await setRoomMembership(chat, await User.whoami(), true);
+  cache[chat.uri] = chat;
+});
+EE.on('chats.leave', async chat => {
+  await setRoomMembership(chat, await User.whoami(), false);
+  delete cache[chat.uri];
+});
 
 EE.once('chats.loaded', () => {
   EE.on('events.6', evt => {
@@ -327,10 +361,12 @@ EE.once('chats.loaded', () => {
 
 module.exports = {
   getAll,
+  getGrouped,
   threads,
   moreThreads,
   messages,
   nextUnread,
   markRead,
   markUnread,
+  preview,
 };

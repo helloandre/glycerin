@@ -62,6 +62,13 @@ function placehold(str = 'loading') {
   return ` {bold}{underline}... ${str} ...{/}`;
 }
 
+function availableRoom(room) {
+  const count = room.memberCount
+    ? ` {grey-fg}(${room.memberCount} members){/}`
+    : '';
+  return `${room.displayName}${count}`;
+}
+
 /**
  * @TODO figure out other kinds of things. potentially use msg.parts
  *
@@ -86,4 +93,5 @@ module.exports = {
   thread,
   message,
   placehold,
+  availableRoom,
 };

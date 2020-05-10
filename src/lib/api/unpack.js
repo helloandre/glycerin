@@ -74,6 +74,7 @@ function chat(c) {
     // that should and shouldn't alert
     // shouldAlert: c[28] || c[33],
     displayName: c[2],
+    normalizedName: c[2].toLowerCase(),
     mostRecentAt: c[8],
     mostRecentReadAt: c[9],
     user: c[17] ? user(c[17][0], c[0]) : null,
@@ -334,6 +335,18 @@ function _event_thread(data) {
   };
 }
 
+function availableRooms(rooms) {
+  return rooms.map(room => ({
+    ...roomMeta(room[0]),
+    displayName: room[1],
+    normalizedName: room[1].toLowerCase(),
+    memberCount: room[2],
+    createdAt: room[3],
+    searchPreview: true,
+    // ?: room[4] // Boolean. has unread?
+  }));
+}
+
 module.exports = {
   chats,
   thread,
@@ -341,4 +354,5 @@ module.exports = {
   message,
   event,
   mutate,
+  availableRooms,
 };
