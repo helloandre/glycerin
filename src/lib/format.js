@@ -69,6 +69,11 @@ function availableRoom(room) {
   return `${room.displayName}${count}`;
 }
 
+function checkbox(item) {
+  const checked = item.checked ? `[x]` : `[ ]`;
+  return `${checked} ${item.displayName}`;
+}
+
 /**
  * @TODO figure out other kinds of things. potentially use msg.parts
  *
@@ -94,4 +99,5 @@ module.exports = {
   message,
   placehold,
   availableRoom,
+  checkbox,
 };

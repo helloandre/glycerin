@@ -4,7 +4,7 @@ const {
 } = require('../../../constants');
 const request = require('./request');
 
-module.exports = function (chat, user, join = false) {
+module.exports = function (chat, user, join = true) {
   const action = join ? 2 : 3; // hooray magic values!
   return request('POST', URL_DATA, {
     'f.req': JSON.stringify([
@@ -13,7 +13,7 @@ module.exports = function (chat, user, join = false) {
           ACTIONID_SET_ROOM_MEMBERSHIP,
           [
             {
-              ACTIONID_SET_ROOM_MEMBERSHIP: [
+              [ACTIONID_SET_ROOM_MEMBERSHIP]: [
                 [],
                 [chat.uri, chat.id, 2],
                 action,

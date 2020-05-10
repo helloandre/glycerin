@@ -9,12 +9,13 @@ Glycerin - Google Chat Terminal User Interface
 
 Usage:
   gln [options]
+  gln prune [options]
   gln run [options] <req>
 
 Options:
   -h --help       Show This Message
   -a --auth       Force reauthenticate with Firefox
-  -e --events     Do not start a UI, instead print events stream
+  -e --events     Do not start a UI, instead print events stream. Overrides all other actions.
 `;
 
 const opts = docopt(doc);
@@ -26,6 +27,9 @@ auth.init(opts).then(() => {
     EE.on('events.*', evt => {
       console.log(evt);
     });
+  } else if (opts.prune) {
+    const Prune = require('./src/screens/prune');
+    Prune.bootstrap();
   } else if (opts.run) {
     const req = require('./src/lib/api/request');
     const { URL_DATA } = require('./constants');
