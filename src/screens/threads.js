@@ -30,6 +30,12 @@ threads.thread = function () {
 };
 
 async function display(selectLast = true) {
+  if (!threads._data.threads.length) {
+    threads.setItems([format.placehold('no threads, yet')]);
+    threads.screen.render();
+    return;
+  }
+
   const formatted = [];
   // eslint-disable-next-line no-unused-vars
   for (let thread of threads._data.threads) {
