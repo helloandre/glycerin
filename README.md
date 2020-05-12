@@ -36,6 +36,7 @@
 - `e` - expand section
 - `c` - collapse section
 - `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate chats
+- `ctrl+l` - leave chat
 
 ### Threads
 
