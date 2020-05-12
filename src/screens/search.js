@@ -88,6 +88,8 @@ function populate(chats) {
 
 input.on('keypress', (ch, key) => {
   switch (key.full) {
+    case 'return':
+      return; // :(
     case 'down':
     case 'linefeed':
       results.down();
@@ -102,7 +104,14 @@ input.on('keypress', (ch, key) => {
     case 'C-p':
       return EE.emit('chats.searchPreview', selected());
     case 'enter':
-      return EE.emit('chats.join', selected());
+      search.hide();
+      search.screen.render();
+
+      EE.emit('chats.join', selected());
+      search._data = {};
+      results._data = {};
+      input._data = {};
+      return;
     case 'escape':
       search._data = {};
       results._data = {};

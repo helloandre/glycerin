@@ -103,6 +103,21 @@ EE.on('threads.blur', fromPreview => {
     chats.focus();
   }
 });
+// need to wait until after chat is joined otherwise
+// we break assumptions about it's availability in cache
+EE.on('chats.joined', chat => {
+  chats.focus();
+
+  if (chat.isDm) {
+    chats._data.chats.dms.unshift(chat);
+  } else {
+    chats._data.chats.rooms.unshift(chat);
+  }
+
+  display();
+  select(chat);
+  EE.emit('chats.select', chat);
+});
 
 function expand(t) {
   const type = t || selectedType();
