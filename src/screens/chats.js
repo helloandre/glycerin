@@ -2,6 +2,8 @@ const blessed = require('neo-blessed');
 const Chat = require('../lib/model/chat');
 const EE = require('../lib/eventemitter');
 const format = require('../lib/format');
+const working = require('./working');
+const confirm = require('./confirm');
 const {
   COLORS_ACTIVE_ITEM,
   COLORS_ACTIVE_SELECTED,
@@ -26,13 +28,12 @@ const chats = blessed.list({
 });
 chats._data = { chats: {}, expanded: [] };
 
-chats.on('keypress', (ch, key) => {
+chats.on('keypress', async (ch, key) => {
   const selected = chats._data.visible[chats.selected];
 
   switch (key.full) {
     case 'C-l':
-      EE.emit('chats.leave', selected);
-      // TODO remove from list
+      await leave(selected);
       return;
     case 'j':
     case 'down':
@@ -103,11 +104,7 @@ EE.on('threads.blur', fromPreview => {
     chats.focus();
   }
 });
-// need to wait until after chat is joined otherwise
-// we break assumptions about it's availability in cache
-EE.on('chats.joined', chat => {
-  chats.focus();
-
+EE.on('chats.join', chat => {
   if (chat.isDm) {
     chats._data.chats.dms.unshift(chat);
   } else {
@@ -146,6 +143,14 @@ function selectedType() {
       return type;
     }
     currentLen = nextLen;
+  }
+}
+// this assumes a chat can only be in one type, but ¯\_(ツ)_/¯
+function typeOf(chat) {
+  for (let type of Object.keys(chats._data.chats)) {
+    if (chats._data.chats[type].findIndex(c => c.uri === chat.uri) !== -1) {
+      return type;
+    }
   }
 }
 function displayLimit(type) {
@@ -216,6 +221,24 @@ function display() {
   chats.setItems(content);
   chats._data.visible = visible;
   chats.screen.render();
+}
+
+function leave(chat) {
+  return confirm.ask(`Leave ${chat.displayName}?`).then(async ans => {
+    if (ans) {
+      working.show();
+      const sel = chats.selected;
+      await Chat.leave(chat);
+      const type = typeOf(chat);
+      chats._data.chats[type] = chats._data.chats[type].filter(
+        c => c.uri !== chat.uri
+      );
+
+      display();
+      chats.select(sel);
+      working.hide();
+    }
+  });
 }
 
 async function loadAll() {

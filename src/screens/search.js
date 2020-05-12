@@ -4,6 +4,7 @@ const getAvailableRooms = require('../lib/api/get-available-rooms');
 const Chat = require('../lib/model/chat');
 const format = require('../lib/format');
 const unpack = require('../lib/api/unpack');
+const working = require('./working');
 const {
   COLORS_ACTIVE_ITEM,
   COLORS_ACTIVE_SELECTED,
@@ -86,7 +87,16 @@ function populate(chats) {
   display();
 }
 
-input.on('keypress', (ch, key) => {
+function blur() {
+  search._data = {};
+  results._data = {};
+  input._data = {};
+  search.hide();
+  search.screen.render();
+  EE.emit('search.blur');
+}
+
+input.on('keypress', async (ch, key) => {
   switch (key.full) {
     case 'return':
       return; // :(
@@ -104,21 +114,13 @@ input.on('keypress', (ch, key) => {
     case 'C-p':
       return EE.emit('chats.searchPreview', selected());
     case 'enter':
-      search.hide();
-      search.screen.render();
-
+      working.show();
+      await Chat.join(selected());
       EE.emit('chats.join', selected());
-      search._data = {};
-      results._data = {};
-      input._data = {};
-      return;
+      working.hide();
+      return blur();
     case 'escape':
-      search._data = {};
-      results._data = {};
-      input._data = {};
-      search.hide();
-      EE.emit('search.blur');
-      return;
+      return blur();
     // these listeners need to be duplicated from screen
     // as input captures keys and doesn't bubble them
     case 'C-d':

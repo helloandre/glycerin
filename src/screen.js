@@ -21,6 +21,8 @@ function bootstrap() {
   const { messages } = require('./screens/messages');
   const { input } = require('./screens/input');
   const { search } = require('./screens/search');
+  const { confirm } = require('./screens/confirm');
+  const { working } = require('./screens/working');
 
   /**
    * add all our objects to the screen
@@ -30,6 +32,8 @@ function bootstrap() {
   screen.append(messages);
   screen.append(input);
   screen.append(search);
+  screen.append(confirm);
+  screen.append(working);
 
   // initial focus given to sidebar to select a chat room
   chats.focus();

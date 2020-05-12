@@ -310,18 +310,15 @@ function fetchMessages(obj, before) {
       });
 }
 
-EE.on('chats.join', async chat => {
+async function join(chat) {
   await setRoomMembership(chat, await User.whoami(), true);
   cache[chat.uri] = chat;
+}
 
-  EE.emit('chats.joined', chat);
-});
-EE.on('chats.leave', async chat => {
+async function leave(chat) {
   await setRoomMembership(chat, await User.whoami(), false);
   delete cache[chat.uri];
-
-  EE.emit('chats.left', chat);
-});
+}
 
 EE.once('chats.loaded', () => {
   EE.on('events.6', evt => {
@@ -373,4 +370,6 @@ module.exports = {
   markRead,
   markUnread,
   preview,
+  join,
+  leave,
 };
