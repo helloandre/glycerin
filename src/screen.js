@@ -42,9 +42,9 @@ function bootstrap() {
   screen.on('keypress', async (ch, key) => {
     switch (key.full) {
       case 'C-f':
-        return EE.emit('chats.search.local');
+        return EE.emit('search.local');
       case 'C-o':
-        return EE.emit('chats.search.remote');
+        return EE.emit('search.remote');
       case 'C-d':
         return process.exit(0);
       case 'C-r':

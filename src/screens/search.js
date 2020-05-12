@@ -112,11 +112,11 @@ input.on('keypress', async (ch, key) => {
       return;
     case 'right':
     case 'C-p':
-      return EE.emit('chats.searchPreview', selected());
+      return EE.emit('search.preview', selected());
     case 'enter':
       working.show();
       await Chat.join(selected());
-      EE.emit('chats.join', selected());
+      EE.emit('search.select', selected());
       working.hide();
       return blur();
     case 'escape':
@@ -142,12 +142,12 @@ input.on('keypress', async (ch, key) => {
   filterResults();
 });
 
-EE.on('chats.search.remote', () => {
+EE.on('search.remote', () => {
   open();
   getAvailableRooms().then(unpack.availableRooms).then(populate);
 });
 
-EE.on('chats.search.local', () => {
+EE.on('search.local', () => {
   open();
   populate(Chat.getAll());
 });

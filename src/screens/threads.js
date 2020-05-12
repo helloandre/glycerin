@@ -115,7 +115,7 @@ threads.on('keypress', (ch, key) => {
         threads.style.selected = COLORS_INACTIVE_SELECTED;
         EE.emit('threads.select', threads.thread());
       } else if (key.full === 'enter') {
-        EE.emit('chats.join', threads._data.chat);
+        EE.emit('search.select', threads._data.chat);
       }
       return;
     case 'escape':
@@ -193,7 +193,7 @@ EE.on('chats.nextUnread', async chat => {
     threads.screen.render();
   }
 });
-EE.on('chats.searchPreview', async chat => {
+EE.on('search.preview', async chat => {
   threads.focus();
   threads.setItems([format.placehold()]);
   threads.screen.render();

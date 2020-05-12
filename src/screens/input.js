@@ -131,7 +131,7 @@ EE.on('messages.new', ({ thread }) => {
     };
   }
 });
-EE.on('chats.searchPreview', chat => {
+EE.on('search.preview', chat => {
   input.setValue(`press "enter" again to join "${chat.displayName}"`);
   input.screen.render();
 });

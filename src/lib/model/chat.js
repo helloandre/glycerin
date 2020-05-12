@@ -311,13 +311,17 @@ function fetchMessages(obj, before) {
 }
 
 async function join(chat) {
-  await setRoomMembership(chat, await User.whoami(), true);
-  cache[chat.uri] = chat;
+  if (!cache[chat.uri]) {
+    await setRoomMembership(chat, await User.whoami(), true);
+    cache[chat.uri] = chat;
+  }
 }
 
 async function leave(chat) {
-  await setRoomMembership(chat, await User.whoami(), false);
-  delete cache[chat.uri];
+  if (cache[chat.uri]) {
+    await setRoomMembership(chat, await User.whoami(), false);
+    delete cache[chat.uri];
+  }
 }
 
 EE.once('chats.loaded', () => {

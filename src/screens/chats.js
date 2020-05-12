@@ -104,11 +104,14 @@ EE.on('threads.blur', fromPreview => {
     chats.focus();
   }
 });
-EE.on('chats.join', chat => {
-  if (chat.isDm) {
-    chats._data.chats.dms.unshift(chat);
-  } else {
-    chats._data.chats.rooms.unshift(chat);
+EE.on('search.select', chat => {
+  const { index } = indexes(chat);
+  if (index === -1) {
+    if (chat.isDm) {
+      chats._data.chats.dms.unshift(chat);
+    } else {
+      chats._data.chats.rooms.unshift(chat);
+    }
   }
 
   display();
