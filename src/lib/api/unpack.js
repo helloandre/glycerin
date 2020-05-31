@@ -203,8 +203,22 @@ function _withUUID(base, type, data) {
         ..._event_msg(data[5][0]),
         ..._event_thread(data[5][0][0]),
       };
+    // ???
+    case 9:
+      return {
+        ...base,
+        _data: data[6],
+      };
+    // star
+    case 11:
+      return {
+        ...base,
+        starred: data[8][1] === 1,
+        _data: data[8],
+      };
     // more complete message event, includes user/bot name?
     // does not appear for rooms, only DMS (confirm: only bots?)
+    // new theory: "mobile alert set" as it appears simultaneously
     case 12:
       return {
         ...base,
@@ -218,11 +232,24 @@ function _withUUID(base, type, data) {
           // ?: data[9][0][4], -> 1 // is bot?
         },
       };
-    // seems to be duplicate of 3
+    // something like "number of unread in this room/thread"
     case 13:
       return {
         ...base,
-        _data: data[10],
+        unreadCount: parseInt(data[10][0], 10),
+        // another weird room shape
+        ..._mark_read_room(data[10]),
+      };
+    // toggle notifications
+    case 18:
+      return {
+        ...base,
+        notify: data[16][1][0] === 2,
+        // another weird room shape
+        room: {
+          uri: `space/${data[16][0][0][0]}`,
+          id: data[16][0][0][0],
+        },
       };
     // emoji added to a message
     case 24:
@@ -331,6 +358,24 @@ function _event_thread(data) {
     room: {
       uri: `space/${data[2][0][0]}`,
       id: data[2][0][0],
+    },
+  };
+}
+
+function _mark_read_room(obj) {
+  if (obj[2][2]) {
+    return {
+      room: {
+        uri: `dm/${obj[2][2][0]}`,
+        id: obj[2][2][0],
+      },
+    };
+  }
+
+  return {
+    room: {
+      uri: `space/${obj[2][0][0]}`,
+      id: obj[2][0][0],
     },
   };
 }

@@ -4,6 +4,7 @@ const getChatThreads = require('../api/get-chat-threads');
 const getChatMessages = require('../api/get-chat-messages');
 const getThreadMessages = require('../api/get-thread-messages');
 const setRoomMembership = require('../api/set-room-membership');
+const markReadAPI = require('../api/mark-read');
 const unpack = require('../api/unpack');
 const User = require('./user');
 const EE = require('../eventemitter');
@@ -77,11 +78,26 @@ function getAll() {
 
 /**
  * remove this object from our unread queue, potentially out of order
+ * and tell the server that it's been read
  *
  * @param {unpack.chat|unpack.thread} obj
  */
 function markRead(obj) {
+  const before = unread.length;
   unread = unread.filter(u => u.id !== obj.id || u.uri !== obj.uri);
+  if (before !== unread.length) {
+    // fire and forget
+    markReadAPI(obj);
+
+    const c = _chat(obj.room ? obj.room : obj);
+    if (c) {
+      c.isUnread = false;
+
+      if (c.threads) {
+        c.threads.forEach(t => (t.isUnread = false));
+      }
+    }
+  }
 }
 
 /**
@@ -90,6 +106,7 @@ function markRead(obj) {
  * @param {unpack.chat|unpack.thread} obj
  */
 async function markUnread(obj) {
+  // put this object at the front of unread
   unread = [
     {
       id: obj.id,
