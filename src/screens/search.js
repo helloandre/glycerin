@@ -89,13 +89,13 @@ function populate(chats) {
   display();
 }
 
-function blur() {
+function blur(found) {
   search._data = {};
   results._data = {};
   input._data = {};
   search.hide();
   search.screen.render();
-  EE.emit('search.blur');
+  EE.emit('search.blur', found);
 }
 
 input.on('keypress', async (ch, key) => {
@@ -120,9 +120,9 @@ input.on('keypress', async (ch, key) => {
       await Chat.join(selected());
       EE.emit('search.select', selected());
       working.hide();
-      return blur();
+      return blur(true);
     case 'escape':
-      return blur();
+      return blur(false);
     // these listeners need to be duplicated from screen
     // as input captures keys and doesn't bubble them
     case 'C-d':

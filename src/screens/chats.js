@@ -76,9 +76,11 @@ chats.on('blur', () => {
 });
 EE.on('screen.ready', loadAll);
 EE.on('screen.refresh', loadAll);
-EE.on('search.blur', () => {
-  chats.focus();
-  chats.screen.render();
+EE.on('search.blur', found => {
+  if (!found) {
+    chats.focus();
+    chats.screen.render();
+  }
 });
 EE.on('chats.nextUnread', chat => {
   if (chat) {
