@@ -855,7 +855,7 @@ natural-compare@^1.4.0:
 
 "neo-blessed@https://github.com/helloandre/neo-blessed.git":
   version "0.2.0"
-  resolved "https://github.com/helloandre/neo-blessed.git#fa63a5db0e0dfbc94d50fefd7703f574466b17db"
+  resolved "https://github.com/helloandre/neo-blessed.git#10900b1c61b91dfd7dfaaea54081d0aefc4dac25"
 
 nice-try@^1.0.4:
   version "1.0.5"

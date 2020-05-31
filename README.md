@@ -22,35 +22,38 @@
 
 # Key Bindings
 
-### global
+### Global
 
 - `ctrl+d` - exit
-- `ctrl+r` - reload chats/threads/messages
 - `ctrl+n` - go to the newest unread message
-- `ctrl+o` - find rooms to join
-- `ctrl+f` - find rooms/dms already joined
+- `ctrl+f f` - find rooms to join
+- `ctrl+f /` - find rooms/dms already joined
 
 ### Chats
 
-- `enter`/`right`/`v` - select chat
-- `e` - expand section
-- `c` - collapse section
-- `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate chats
-- `ctrl+l` - leave chat
+- `enter` - select chat
+- `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate
+- `e` - expand/collapse section
+- `ctrl+r l` - leave room
+- (todo) `ctrl+r s` - star/unstar
+- (todo) `ctrl+r m` - mute/unmute
+- (todo) `ctrl+r a` - add user/bot
 
 ### Threads
 
-- `enter`/`right`/`v` - select thread
-- `escape`/`left`/`q` - exit to chats
-- `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate threads
-- `ctrl+e` - expand messages
-- `ctrl+j`/`ctrl+k`/`ctrl+g`/`ctrl+l` - navitage messages
+- `enter` - select thread
+- `escape` - exit to chats
+- `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate
+- `ctrl+t n` - new thread
 
 ### Input
 
 - `escape` - exit to threads or chats (in case of dm)
-- `ctrl+e` - expand messages
-- `ctrl+j`/`ctrl+k`/`ctrl+g`/`ctrl+l` - navitage messages
+
+### Messages
+
+- `ctrl+j`/`ctrl+k`/`ctrl+g`/`ctrl+l` - navitage (todo: update ctrl+l to ctrl+shift+g)
+- `ctrl+e` - expand
 
 # Status
 

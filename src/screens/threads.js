@@ -66,74 +66,54 @@ async function up() {
   }
 }
 
-threads.on('keypress', (ch, key) => {
-  switch (key.full) {
-    case 'C-c':
-      if (!threads._data.searchPreview) {
-        EE.emit('threads.new', threads._data.chat);
-      }
-      return;
-    case 'C-k':
-      EE.emit('messages.scroll.up');
-      return;
-    case 'linefeed':
-      EE.emit('messages.scroll.down');
-      return;
-    case 'C-g':
-      EE.emit('messages.scroll.top');
-      return;
-    case 'C-l':
-      EE.emit('messages.scroll.bottom');
-      return;
-    case 'C-e':
-      EE.emit('messages.expand');
-      return;
-    case 'up':
-    case 'k':
-      up();
-      return;
-    case 'down':
-    case 'j':
-      threads.down();
-      threads.screen.render();
-      return;
-    case 'g':
-      threads.select(0);
-      threads.screen.render();
-      return;
-    case 'S-g':
-      threads.select(threads.items.length - 1);
-      threads.screen.render();
-      return;
-    case 'enter':
-    case 'right':
-    case 'v':
-      // if we're previewing, we cannot "select" a thread
-      // but we can still nagivate messages
-      if (!threads._data.searchPreview) {
-        threads.style.item = COLORS_INACTIVE_ITEM;
-        threads.style.selected = COLORS_INACTIVE_SELECTED;
-        EE.emit('threads.select', threads.thread());
-      } else if (key.full === 'enter') {
-        EE.emit('search.select', threads._data.chat);
-      }
-      return;
-    case 'escape':
-    case 'left':
-    case 'q':
-      threads.style.item = COLORS_INACTIVE_ITEM;
-      threads.style.selected = COLORS_INACTIVE_SELECTED;
-      EE.emit('threads.blur', threads._data.searchPreview);
-
-      // needs to be done before setItems() otherwise we attempt
-      // to threads.preview as a "set item" even gets triggered
-      threads._data = {};
-      threads.setItems(['Select A Room']);
-      threads.screen.render();
-
-      return;
+threads.key('C-t n', () => {
+  if (!threads._data.searchPreview) {
+    EE.emit('threads.new', threads._data.chat);
   }
 });
+threads.key(['k', 'up'], up);
+threads.key(['j', 'down'], () => {
+  threads.down();
+  threads.screen.render();
+});
+threads.key(['g'], () => {
+  threads.select(0);
+  threads.screen.render();
+});
+threads.key(['S-g'], () => {
+  threads.select(threads.items.length - 1);
+  threads.screen.render();
+});
+threads.key('enter', () => {
+  // if we're previewing, we cannot "select" a thread
+  // but we can still nagivate messages
+  if (!threads._data.searchPreview) {
+    threads.style.item = COLORS_INACTIVE_ITEM;
+    threads.style.selected = COLORS_INACTIVE_SELECTED;
+    EE.emit('threads.select', threads.thread());
+  } else {
+    EE.emit('search.select', threads._data.chat);
+  }
+});
+threads.key('escape', () => {
+  threads.style.item = COLORS_INACTIVE_ITEM;
+  threads.style.selected = COLORS_INACTIVE_SELECTED;
+  EE.emit('threads.blur', threads._data.searchPreview);
+
+  // needs to be done before setItems() otherwise we attempt
+  // to threads.preview as a "set item" even gets triggered
+  threads._data = {};
+  threads.setItems(['Select A Room']);
+  threads.screen.render();
+});
+
+// messages
+threads.key('C-k', () => EE.emit('messages.scroll.up'));
+threads.key('linefeed', () => EE.emit('messages.scroll.down'));
+threads.key('C-g', () => EE.emit('messages.scroll.top'));
+threads.key('C-l', () => EE.emit('messages.scroll.bottom'));
+threads.key('C-e', () => EE.emit('messages.expand'));
+
 threads.on('focus', () => {
   threads.style.item = COLORS_ACTIVE_ITEM;
   threads.style.selected = COLORS_ACTIVE_SELECTED;
@@ -162,6 +142,10 @@ EE.on('chats.select', async chat => {
   }
 });
 EE.on('chats.nextUnread', async chat => {
+  if (!chat) {
+    return;
+  }
+
   if (chat.room) {
     if (!threads._data.chat || chat.room.uri !== threads._data.chat.uri) {
       threads.setItems([format.placehold()]);
@@ -186,7 +170,7 @@ EE.on('chats.nextUnread', async chat => {
       threads.select(idx);
     }
     threads.screen.render();
-  } else if (chat) {
+  } else {
     // we have an unread, but it's a DM
     threads._data = {};
     threads.setItems(['Select A Room']);

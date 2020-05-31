@@ -22,35 +22,20 @@ const input = blessed.textbox({
 });
 input._data = {};
 
-input.on('keypress', async (ch, key) => {
-  switch (key.full) {
-    case 'C-k':
-      EE.emit('messages.scroll.up');
-      return;
-    case 'linefeed': // C-j
-      EE.emit('messages.scroll.down');
-      return;
-    case 'C-g':
-      EE.emit('messages.scroll.top');
-      return;
-    case 'C-l':
-      EE.emit('messages.scroll.bottom');
-      return;
-    case 'C-e':
-      EE.emit('messages.expand');
-      return;
-    // these listeners need to be duplicated from screen
-    // as input captures keys and doesn't bubble them
-    case 'C-r':
-      EE.emit('screen.refresh');
-      return;
-    case 'C-n':
-      EE.emit('chats.nextUnread', await Chat.nextUnread());
-      return;
-    case 'C-d':
-      process.exit(0);
-  }
-});
+input.key('C-k', () => EE.emit('messages.scroll.up'));
+input.key('linefeed', () => EE.emit('messages.scroll.down'));
+input.key('C-g', () => EE.emit('messages.scroll.top'));
+input.key('C-l', () => EE.emit('messages.scroll.bottom'));
+input.key('C-e', () => EE.emit('messages.expand'));
+
+// these listeners need to be duplicated from screen
+// as input captures keys and doesn't bubble them
+input.key('C-f /', () => EE.emit('search.local'));
+input.key('C-f f', () => EE.emit('search.remote'));
+input.key('C-n', async () =>
+  EE.emit('chats.nextUnread', await Chat.nextUnread())
+);
+input.key('C-d', () => process.exit(0));
 
 input.on('focus', () => {
   input.readInput((err, value) => {

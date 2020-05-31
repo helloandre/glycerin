@@ -27,42 +27,40 @@ const chats = blessed.list({
   },
 });
 chats._data = { chats: {}, expanded: [] };
+chats.chat = function () {
+  return chats._data.visible[chats.selected];
+};
 
-chats.on('keypress', async (ch, key) => {
-  const selected = chats._data.visible[chats.selected];
-
-  switch (key.full) {
-    case 'C-l':
-      await leave(selected);
-      return;
-    case 'j':
-    case 'down':
-      chats.down();
-      chats.screen.render();
-      return;
-    case 'k':
-    case 'up':
-      chats.up();
-      chats.screen.render();
-      return;
-    case 'e':
+chats.key('C-r l', () => leave(chats.chat()));
+chats.key('e', toggleExpand);
+chats.key(['j', 'down'], () => {
+  chats.down();
+  chats.screen.render();
+});
+chats.key(['k', 'up'], () => {
+  chats.up();
+  chats.screen.render();
+});
+chats.key(['g'], () => {
+  chats.select(0);
+  chats.screen.render();
+});
+chats.key(['S-g'], () => {
+  chats.select(chats._data.visible.length - 1);
+  chats.screen.render();
+});
+chats.key('enter', () => {
+  const selected = chats.chat();
+  if (selected.title) {
+    if (selected.expand) {
       expand();
-      return;
-    case 'c':
+    } else if (selected.collapse) {
       collapse();
-      return;
-    case 'enter':
-    case 'right':
-    case 'v':
-      if (selected.expand) {
-        expand();
-      } else if (selected.collapse) {
-        collapse();
-      } else {
-        EE.emit('chats.select', selected);
-      }
-      chats.screen.render();
-      return;
+    }
+
+    chats.screen.render();
+  } else {
+    EE.emit('chats.select', selected);
   }
 });
 
@@ -83,7 +81,9 @@ EE.on('search.blur', () => {
   chats.screen.render();
 });
 EE.on('chats.nextUnread', chat => {
-  select(chat.room || chat);
+  if (chat) {
+    select(chat.room || chat);
+  }
 });
 EE.on('messages.new', ({ chat }) => {
   const { typeIndex, type, visibleIndex } = indexes(chat);
@@ -119,6 +119,18 @@ EE.on('search.select', chat => {
   EE.emit('chats.select', chat);
 });
 
+function toggleExpand() {
+  const type = selectedType();
+  const prevSelected = chats.selected;
+  if (expanded(type)) {
+    collapse(type);
+  } else {
+    expand(type);
+  }
+
+  chats.select(prevSelected);
+  chats.screen.render();
+}
 function expand(t) {
   const type = t || selectedType();
   if (!expanded(type)) {
@@ -140,8 +152,7 @@ function selectedType() {
   let currentLen = 0;
   for (let type of Object.keys(chats._data.chats)) {
     const limit = displayLimit(type);
-    const expando = expanded(type) || shouldDisplayExpando(type) ? 1 : 0;
-    const nextLen = currentLen + limit + expando;
+    const nextLen = currentLen + limit + 1;
     if (idx >= currentLen && idx < nextLen) {
       return type;
     }
@@ -192,12 +203,11 @@ function indexes(chat) {
         type,
         typeIndex,
         needsExpanding: typeIndex > limit,
-        visibleIndex: typeIndex + numAbove,
+        visibleIndex: typeIndex + numAbove + 1,
       };
     }
 
-    const expando = expanded(type) || shouldDisplayExpando(type) ? 1 : 0;
-    numAbove += limit + expando;
+    numAbove += limit + 1;
   }
 
   return { index: -1 };
@@ -208,17 +218,20 @@ function display() {
   let visible = [];
 
   for (let [type, data] of Object.entries(chats._data.chats)) {
+    if (expanded(type)) {
+      content.push(`{underline}▲ Collapse ${type}{/}`);
+      visible.push({ collapse: true, title: true });
+    } else if (shouldDisplayExpando(type)) {
+      content.push(`{underline}▼ Expand ${type}{/}`);
+      visible.push({ expand: true, title: true });
+    } else {
+      content.push(`{underline}${type}{/}`);
+      visible.push({ title: true });
+    }
+
     const items = data.slice(0, displayLimit(type));
     content = content.concat(items.map(format.chat));
     visible = visible.concat(items);
-
-    if (expanded(type)) {
-      content.push('{underline}▲ Collapse{/}');
-      visible.push({ collapse: true });
-    } else if (shouldDisplayExpando(type)) {
-      content.push('{underline}▼ Expand{/}');
-      visible.push({ expand: true });
-    }
   }
 
   chats.setItems(content);

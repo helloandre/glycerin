@@ -39,20 +39,13 @@ function bootstrap() {
   chats.focus();
 
   screen.title = 'GChat TUI';
-  screen.on('keypress', async (ch, key) => {
-    switch (key.full) {
-      case 'C-f':
-        return EE.emit('search.local');
-      case 'C-o':
-        return EE.emit('search.remote');
-      case 'C-d':
-        return process.exit(0);
-      case 'C-r':
-        return EE.emit('screen.refresh');
-      case 'C-n':
-        return EE.emit('chats.nextUnread', await Chat.nextUnread());
-    }
-  });
+
+  screen.key('C-f /', () => EE.emit('search.local'));
+  screen.key('C-f f', () => EE.emit('search.remote'));
+  screen.key('C-n', async () =>
+    EE.emit('chats.nextUnread', await Chat.nextUnread())
+  );
+  screen.key('C-d', () => process.exit(0));
 
   EE.emit('screen.ready');
 }

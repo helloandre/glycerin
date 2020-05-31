@@ -54,7 +54,7 @@ async function display(loading = false) {
 async function view(chat, showLoading = true) {
   // if this object is a unpack.chat and is not a dm
   // there's no messages for us to display, so ignore
-  if (!chat.room && !chat.isDm) {
+  if (!chat || (!chat.room && !chat.isDm)) {
     return;
   }
 

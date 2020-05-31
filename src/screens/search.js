@@ -73,6 +73,9 @@ function display() {
 }
 
 function open() {
+  input._data = { value: '' };
+  input.setValue('');
+
   search.show();
   input.focus();
   results.setItems([format.placehold()]);
@@ -83,7 +86,6 @@ function populate(chats) {
   results.set('label', `Searching ${chats.length}`);
 
   search._data = { chats, visible: chats };
-  input._data = { value: '' };
   display();
 }
 
@@ -131,11 +133,9 @@ input.on('keypress', async (ch, key) => {
     if (input._data.value.length) {
       input._data.value = input._data.value.slice(0, -1);
     }
-  } else if (ch) {
     // eslint-disable-next-line no-control-regex
-    if (!/^[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]$/.test(ch)) {
-      input._data.value += ch;
-    }
+  } else if (ch && !/^[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]$/.test(ch)) {
+    input._data.value += ch;
   }
 
   input.setValue(input._data.value);
