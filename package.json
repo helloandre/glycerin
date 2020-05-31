@@ -3,7 +3,7 @@
     "axios": "^0.19.2",
     "docopt": "^0.6.2",
     "moment": "^2.24.0",
-    "neo-blessed": "^0.2.0",
+    "neo-blessed": "https://github.com/helloandre/neo-blessed.git",
     "puppeteer": "^3.0.2",
     "qs": "^6.9.3"
   },
