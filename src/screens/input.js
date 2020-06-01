@@ -4,6 +4,7 @@ const sendChatMessage = require('../lib/api/send-chat-message');
 const sendThreadMessage = require('../lib/api/send-thread-message');
 const createThread = require('../lib/api/create-thread');
 const Chat = require('../lib/model/chat');
+const config = require('../lib/config');
 
 const input = blessed.textbox({
   label: 'Input',
@@ -22,11 +23,23 @@ const input = blessed.textbox({
 });
 input._data = {};
 
+function history() {
+  return config.get(`history.${input._data.chat.id}`, false);
+}
+
 input.key('C-k', () => EE.emit('messages.scroll.up'));
 input.key('linefeed', () => EE.emit('messages.scroll.down'));
 input.key('C-g', () => EE.emit('messages.scroll.top'));
 input.key('C-l', () => EE.emit('messages.scroll.bottom'));
 input.key('C-e', () => EE.emit('messages.expand'));
+input.key('C-p', () => {
+  if (input._data.chat.isDm) {
+    const curr = history();
+    config.set(`history.${input._data.chat.id}`, !curr);
+    input.setLabel(`Input (history: ${!curr ? 'on' : 'off'})`);
+    input.screen.render();
+  }
+});
 
 // these listeners need to be duplicated from screen
 // as input captures keys and doesn't bubble them
@@ -38,6 +51,9 @@ input.key('C-n', async () =>
 input.key('C-d', () => process.exit(0));
 
 input.on('focus', () => {
+  if (input._data.chat.isDm) {
+    input.setLabel(`Input (history: ${history() ? 'on' : 'off'})`);
+  }
   input.readInput((err, value) => {
     input.clearValue();
     if (value !== null) {
@@ -45,7 +61,7 @@ input.on('focus', () => {
         // fire and forget these
         // we get an event when the message is sent
         if (input._data.from === 'chats') {
-          sendChatMessage(value, input._data.chat);
+          sendChatMessage(value, input._data.chat, history());
         } else if (input._data.new) {
           createThread(value, input._data.chat);
         } else {
@@ -63,6 +79,9 @@ input.on('focus', () => {
 
     input.screen.render();
   });
+});
+input.on('blur', () => {
+  input.setLabel(`Input`);
 });
 
 EE.on('threads.new', chat => {
@@ -120,7 +139,7 @@ EE.on('search.preview', chat => {
   input.setValue(`press "enter" again to join "${chat.displayName}"`);
   input.screen.render();
 });
-EE.on('threads.blur', () => {
+EE.on('threads.blur', found => {
   input.clearValue();
   input.screen.render();
 });

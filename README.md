@@ -49,6 +49,7 @@
 ### Input
 
 - `escape` - exit to threads or chats (in case of dm)
+- `ctrl+p` - toggle chat history
 
 ### Messages
 

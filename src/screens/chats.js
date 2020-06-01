@@ -31,6 +31,8 @@ chats.chat = function () {
   return chats._data.visible[chats.selected];
 };
 
+chats.key('/', () => EE.emit('search.local'));
+chats.key('f', () => EE.emit('search.remote'));
 chats.key('C-r l', () => leave(chats.chat()));
 chats.key('e', toggleExpand);
 chats.key(['j', 'down'], () => {
