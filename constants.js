@@ -41,7 +41,7 @@ const COLORS_INACTIVE_ITEM = {
   fg: 'grey',
 };
 const COLORS_INACTIVE_SELECTED = {
-  fg: '#111111',
+  fg: 'black',
   bg: 'grey',
 };
 

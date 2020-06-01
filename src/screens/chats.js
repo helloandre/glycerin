@@ -85,6 +85,7 @@ EE.on('search.blur', found => {
 EE.on('chats.nextUnread', chat => {
   if (chat) {
     select(chat.room || chat);
+    Chat.markRead(chat);
   }
 });
 EE.on('messages.new', ({ chat }) => {
@@ -119,6 +120,13 @@ EE.on('search.select', chat => {
   display();
   select(chat);
   EE.emit('chats.select', chat);
+});
+EE.on('chats.read', chat => {
+  // wholesale replace existing chat with the one we were just given
+  const { type, typeIndex } = indexes(chat);
+  chats._data.chats[type][typeIndex] = chat;
+
+  display();
 });
 
 function toggleExpand() {

@@ -96,6 +96,7 @@ function markRead(obj) {
       if (c.threads) {
         c.threads.forEach(t => (t.isUnread = false));
       }
+      EE.emit('chats.read', c);
     }
   }
 }
@@ -367,6 +368,8 @@ EE.once('chats.loaded', () => {
       } else {
         // if we haven't fetched dm messages yet, don't do so now
         // as we'll fetch them when we actually load that chat
+        // TODO in the case of a DM from a new chat we've never seen before
+        // we need to do something here... not sure what yet
         const c = _chat(evt.room);
         if (c.messages) {
           c.messages.push(msg);

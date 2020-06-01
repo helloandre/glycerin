@@ -4,15 +4,13 @@ const User = require('./model/user');
 /**
  * Display the rooms and dms the user has
  *
- * @param {unpack.chat} c
+ * @param {unpack.chat}
  *
  * @return {String}
  */
-function chat(c) {
-  if (c.isUnread) {
-    return `{bold}${c.displayName}{/bold}`;
-  }
-  return c.displayName;
+function chat({ isUnread, displayName }) {
+  const prefix = isUnread ? '*' : ' ';
+  return prefix + displayName;
 }
 
 /**
@@ -22,21 +20,17 @@ function chat(c) {
  *  - author of first message
  *  - first line of first message of the thread
  *
- * @param {unpack.thread} t
+ * @param {unpack.thread}
  *
  * @return {String}
  */
-async function thread(t) {
-  const countStr = t.total
-    ? t.total > 99
-      ? '99+'
-      : `${t.total.toString().padEnd(3, ' ')}`
-    : '+  ';
-  const prefixStr = t.isUnread
-    ? `{bold}${countStr}{/bold}`
-    : `{grey-fg}${countStr}{/grey-fg}`;
-  const preview = await message(t.messages[0], true);
-  return `${prefixStr} ${preview}`;
+async function thread({ isUnread, total, messages }) {
+  const prefix = isUnread ? '*' : ' ';
+  const affix = !isUnread && total > 99 ? '+' : ' ';
+  const preview = await message(messages[0], true);
+  return `{grey-fg}${prefix}${Math.min(99, total)
+    .toString()
+    .padStart(2, ' ')}${affix}{/grey-fg} ${preview}`;
 }
 
 /**

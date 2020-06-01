@@ -95,7 +95,7 @@ threads.key('enter', () => {
     EE.emit('search.select', threads._data.chat);
   }
 });
-threads.key('escape', () => {
+threads.key(['escape', 'q'], () => {
   threads.style.item = COLORS_INACTIVE_ITEM;
   threads.style.selected = COLORS_INACTIVE_SELECTED;
   EE.emit('threads.blur', threads._data.searchPreview);
