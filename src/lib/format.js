@@ -79,15 +79,17 @@ function textFromMsg(msg) {
   }
 
   if (msg.links) {
-    // messages that contain only a link to a google meet
-    // usually from the "add video meeting" button
-    if (msg.links[0][0] === 11) {
-      return `<meet> ${msg.links[0][11][0][2]}`;
+    switch (msg.links[0][0]) {
+      case 1:
+        return `<img> ${msg.links[0][6][6][2]}`;
+      case 19:
+        return `<history ${msg.links[0][16][0][0] === 1 ? 'on' : 'off'}>`;
+      // google meet link?
+      // messages that contain only a link to a google meet
+      // usually from the "add video meeting" button
+      case 11:
+        return `<meet> ${msg.links[0][11][0][2]}`;
     }
-
-    const name =
-      msg.links[0][0] == 1 ? msg.links[0][6][6][2] : msg.links[0][9][2];
-    return `<img> ${name}`;
   }
 
   return '<unknown msg>';

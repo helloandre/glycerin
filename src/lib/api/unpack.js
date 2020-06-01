@@ -77,7 +77,8 @@ function chat(c) {
     normalizedName: c[2].toLowerCase(),
     mostRecentAt: c[8],
     mostRecentReadAt: c[9],
-    user: c[17] ? user(c[17][0], c[0]) : null,
+    // seems to be duplicated in c[43]
+    users: c[17] ? c[17].map(u => user(u, c[0])) : [],
   };
 }
 function fave(c) {

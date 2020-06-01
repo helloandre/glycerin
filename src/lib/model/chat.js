@@ -44,9 +44,7 @@ function getGrouped() {
       for (let [type, group] of Object.entries(chats)) {
         for (let chat of group) {
           cache[chat.uri] = chat;
-          if (chat.isDm) {
-            User.prefetch(chat.user);
-          }
+          chat.users.forEach(User.prefetch);
 
           // chats are ordered by unread from the endpoint
           // so we're kinda cheating here
