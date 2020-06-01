@@ -7,6 +7,7 @@ const randomId = require('../random-id');
 const { URL_EVENTS, URL_REGISTER } = require('../../../constants');
 const config = require('../../lib/config');
 
+const CONFIG_PATH = 'auth';
 let AUTH = {
   request: {},
   events: {},
@@ -55,18 +56,20 @@ function getRequestCookies() {
  * fire up a browser and ~trick~ask the user to log in
  */
 async function init(opts) {
-  const conf = config.get();
+  AUTH = config.get(CONFIG_PATH);
 
-  // we don't have any auth config saved, or it's >5 days old
+  // we don't have any auth config saved, or it's >5 days old, or we forced it
   if (
+    !AUTH ||
     opts['--auth'] ||
-    !conf.auth ||
-    moment(conf.auth.fetchedAt).isBefore(moment().utc().subtract(5, 'days'))
+    moment(AUTH.fetchedAt).isBefore(moment().utc().subtract(5, 'days'))
   ) {
     AUTH.request = await getRequestCookies();
-    config.saveAuth(AUTH);
-  } else {
-    AUTH = conf.auth;
+    config.set(CONFIG_PATH, {
+      // jump through hoops lightly here to avoid saving `events`
+      request: AUTH.request,
+      fetchedAt: moment().utc().valueOf(),
+    });
   }
 }
 
@@ -111,7 +114,7 @@ async function register() {
       /**
        * @TODO don't hardcode room
        */
-      req0_data: '[null,null,null,null,null,null,[],[[[["AAAAsCC42fA"]]]]]',
+      req0_data: '[null,null,null,null,null,null,[],[[[["AAAAasiGtkE"]]]]]',
       count: 0,
     }),
   })
@@ -131,6 +134,7 @@ function requestData() {
 async function eventsData(refresh = false) {
   if (refresh || !AUTH.events.cookie.length) {
     AUTH.events = await register();
+    // we don't persist events cookie as we're not sure when it expires, exactly
   }
 
   return AUTH.events;

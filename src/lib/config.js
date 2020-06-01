@@ -1,13 +1,14 @@
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
-const moment = require('moment');
+const loget = require('lodash.get');
+const loset = require('lodash.set');
 
-const FILENAME = '.glycerinrc.json';
+const FILENAME = '.glycerinconfig.json';
 const FILE = path.join(os.homedir(), FILENAME);
 let configData = undefined;
 
-function get() {
+function get(path, def) {
   if (!configData) {
     try {
       configData = JSON.parse(fs.readFileSync(FILE, 'utf8'));
@@ -24,26 +25,28 @@ function get() {
     }
   }
 
-  return configData;
+  if (!path) {
+    return configData;
+  }
+
+  return loget(configData, path, def);
+}
+
+function set(path, value) {
+  if (!configData) {
+    get();
+  }
+
+  loset(configData, path, value);
+
+  persist();
 }
 
 function persist() {
   fs.writeFileSync(FILE, JSON.stringify(configData));
 }
 
-function saveAuth(auth) {
-  configData = {
-    ...configData,
-    auth: {
-      ...auth,
-      fetchedAt: moment().utc().valueOf(),
-    },
-  };
-
-  persist();
-}
-
 module.exports = {
   get,
-  saveAuth,
+  set,
 };
