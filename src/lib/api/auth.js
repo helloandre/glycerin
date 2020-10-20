@@ -64,11 +64,14 @@ async function init(opts) {
     opts['--auth'] ||
     moment(AUTH.fetchedAt).isBefore(moment().utc().subtract(5, 'days'))
   ) {
-    AUTH.request = await getRequestCookies();
+    AUTH = {
+      request: await getRequestCookies(),
+      fetchedAt: moment().utc().valueOf(),
+    };
     config.set(CONFIG_PATH, {
       // jump through hoops lightly here to avoid saving `events`
       request: AUTH.request,
-      fetchedAt: moment().utc().valueOf(),
+      fetchedAt: AUTH.fetchedAt,
     });
   }
 }
