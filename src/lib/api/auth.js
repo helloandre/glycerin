@@ -16,30 +16,34 @@ let AUTH = {
 /**
  * go get the cookies needed to make any other requests
  *
+ * This will break at some point in the future, sorry future self
+ *
  * @return {Promise}
  */
 function getRequestCookies() {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async res => {
     const browser = await pptr.launch({
+      // this was brought back, apparently as Chrome works now...
       // https://support.google.com/accounts/thread/22873505?msgid=24501976
-      product: 'firefox',
+      // product: 'firefox',
       headless: false,
     });
     const page = await browser.newPage();
     page.on('load', async () => {
-      if (/^https:\/\/chat\.google\.com/.test(page.url())) {
-        const cookie = (await page.cookies())
+      if (/^https:\/\/mail\.google\.com\/chat/.test(page.url())) {
+        await page.waitForSelector('#gtn-roster-iframe-id');
+        const chatFrame = page
+          .frames()
+          .find(f => /^https:\/\/chat\.google\.com/.test(f.url()));
+
+        const cookie = (await page.cookies('https://chat.google.com'))
           .map(c => [c.name, c.value].join('='))
           .join('; ');
         // this is some kind of magical one-time value tied to a timestamp
         // the first 6 characters seem to be consistent across users
-        const at = await page.evaluate(
-          () =>
-            // eslint-disable-next-line no-undef
-            Object.entries(window.WIZ_global_data).filter(o =>
-              /:[0-9]{13}/.test(o[1])
-            )[0][1]
+        const at = await chatFrame.evaluate(() =>
+          window.IJ_values.find(o => /:[0-9]{13}/.test(o))
         );
 
         res({ cookie, at });

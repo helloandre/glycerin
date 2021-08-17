@@ -6,7 +6,7 @@
     "lodash.set": "^4.3.2",
     "moment": "^2.24.0",
     "neo-blessed": "https://github.com/helloandre/neo-blessed.git",
-    "puppeteer": "^3.0.2",
+    "puppeteer": "^10.2.0",
     "qs": "^6.9.3"
   },
   "name": "@helloandre/glycerin",
@@ -23,11 +23,11 @@
     "prettier": "^2.0.4"
   },
   "scripts": {
-    "bootstrap": "PUPPETEER_PRODUCT=firefox yarn",
-    "start": "PUPPETEER_PRODUCT=firefox node index.js",
-    "debug": "PUPPETEER_PRODUCT=firefox node --inspect-brk index.js",
-    "ev": "PUPPETEER_PRODUCT=firefox node index.js -e",
-    "de": "PUPPETEER_PRODUCT=firefox node --inspect-brk index.js -e",
-    "leave": "PUPPETEER_PRODUCT=firefox node index.js leave"
+    "bootstrap": "yarn",
+    "start": "node index.js",
+    "debug": "node --inspect-brk index.js",
+    "ev": "node index.js -e",
+    "de": "node --inspect-brk index.js -e",
+    "leave": "node index.js leave"
   }
 }
