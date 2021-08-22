@@ -45,6 +45,7 @@ async function display(selectLast = true) {
   threads.setItems(formatted);
   if (selectLast) {
     threads.select(formatted.length - 1);
+    threads.emit('select item');
     threads.screen.render();
   }
 }

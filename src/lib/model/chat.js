@@ -349,9 +349,16 @@ EE.once('chats.loaded', () => {
         ...evt,
         isUnread: true,
       };
+      const c = _chat(evt.room);
 
-      if (evt.thread) {
+      if (c.isDm) {
+        c.messages = (c.messages || []).concat(msg);
+        c.isUnread = true;
+        markUnread(c);
+        EE.emit('messages.new', { chat: c });
+      } else {
         const thread = _thread(evt.room, evt.thread);
+        thread.room = c;
         thread.messages.push(msg);
         thread.mostRecentAt = timestamp.now();
         thread.total++;
@@ -360,21 +367,9 @@ EE.once('chats.loaded', () => {
         markUnread(thread);
         // but we still want to tell screens/chats about it
         EE.emit('messages.new', {
-          chat: _chat(evt.room),
+          chat: c,
           thread: thread,
         });
-      } else {
-        // if we haven't fetched dm messages yet, don't do so now
-        // as we'll fetch them when we actually load that chat
-        // TODO in the case of a DM from a new chat we've never seen before
-        // we need to do something here... not sure what yet
-        const c = _chat(evt.room);
-        if (c.messages) {
-          c.messages.push(msg);
-          c.isUnread = true;
-        }
-        markUnread(c);
-        EE.emit('messages.new', { chat: c });
       }
     } catch (e) {
       console.log(e);

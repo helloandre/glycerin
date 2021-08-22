@@ -94,6 +94,7 @@ EE.on('messages.new', ({ chat }) => {
   const { typeIndex, type, visibleIndex } = indexes(chat);
   if (visibleIndex !== chats.selected) {
     chats._data.chats[type][typeIndex].isUnread = true;
+    sortChats();
     display();
   } else {
     Chat.markRead(chat);
@@ -224,7 +225,16 @@ function indexes(chat) {
 
   return { index: -1 };
 }
-
+function sortChats() {
+  for (let type of Object.keys(chats._data.chats)) {
+    chats._data.chats[type].sort((a, b) => {
+      if (a.isUnread || b.isUnread) {
+        return a.isUnread ? -1 : 1;
+      }
+      return 0;
+    });
+  }
+}
 function display() {
   let content = [];
   let visible = [];

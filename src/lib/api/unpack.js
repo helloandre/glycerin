@@ -73,8 +73,7 @@ function chat(c) {
     // that change from null -> true between chats
     // that should and shouldn't alert
     // shouldAlert: c[28] || c[33],
-    displayName: c[2],
-    normalizedName: c[2].toLowerCase(),
+    ...chatName(c),
     mostRecentAt: c[8],
     mostRecentReadAt: c[9],
     // seems to be duplicated in c[43]
@@ -83,6 +82,33 @@ function chat(c) {
 }
 function fave(c) {
   return { ...chat(c), isFave: true };
+}
+// Groups look like DMs, but the "name" is a concatination
+// of the members of the room
+function chatName(c) {
+  if (c[2]) {
+    return {
+      displayName: c[2],
+      normalizedName: c[2].toLowerCase(),
+    };
+  }
+
+  if (c[55]) {
+    const names = c[55]
+      .map(user)
+      .map(u => u.firstName)
+      .sort()
+      .join(', '); //.substring(0, 15);
+    return {
+      displayName: names,
+      normalizedName: names.toLowerCase(),
+    };
+  }
+
+  return {
+    displayName: 'Group Chat',
+    normalizedName: 'group chat',
+  };
 }
 
 function roomMeta(m) {

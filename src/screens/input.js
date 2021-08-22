@@ -51,7 +51,7 @@ input.key('C-n', async () =>
 input.key('C-d', () => process.exit(0));
 
 input.on('focus', () => {
-  if (input._data.chat.isDm) {
+  if (input._data.from === 'chats' && input._data.chat.isDm) {
     input.setLabel(`Input (history: ${history() ? 'on' : 'off'})`);
   }
   input.readInput((err, value) => {
