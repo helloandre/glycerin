@@ -120,15 +120,24 @@ function roomMeta(m) {
 }
 
 function chats(cs) {
-  return {
-    // cs[0] seems to be some kind of aggregation of all rooms?
-    // but it doesn't include favorites
-    favorites: cs[2].map(fave),
-    dms: cs[7].map(chat),
-    rooms: cs[8].map(chat),
-    bots: (cs[9] || []).map(chat),
-    // dmsClosed: cs[15]
-  };
+  return [].concat(
+    cs[2].map(fave), // favorites
+    cs[7].map(chat), // dms
+    cs[8].map(chat), // rooms
+    (cs[9] || []).map(chat).map(c => {
+      c.isBot = true;
+      return c;
+    }) // bots
+  );
+  // return {
+  // cs[0] seems to be some kind of aggregation of all rooms?
+  // but it doesn't include favorites
+  // favorites: cs[2].map(fave),
+  // dms: cs[7].map(chat),
+  // rooms: cs[8].map(chat),
+  // bots: (cs[9] || []).map(chat),
+  // dmsClosed: cs[15]
+  // };
 }
 
 /**

@@ -42,9 +42,7 @@ function bootstrap() {
 
   screen.key('C-f /', () => EE.emit('search.local'));
   screen.key('C-f f', () => EE.emit('search.remote'));
-  screen.key('C-n', async () =>
-    EE.emit('chats.nextUnread', await Chat.nextUnread())
-  );
+  screen.key('C-n', async () => EE.emit('unread.next'));
   screen.key('C-d', () => process.exit(0));
 
   EE.emit('screen.ready');

@@ -1,5 +1,6 @@
 const timestamp = require('../timestamp');
 const getChats = require('../api/get-chats');
+const getAvailableRooms = require('../api/get-available-rooms');
 const getChatThreads = require('../api/get-chat-threads');
 const getChatMessages = require('../api/get-chat-messages');
 const getThreadMessages = require('../api/get-thread-messages');
@@ -9,8 +10,6 @@ const unpack = require('../api/unpack');
 const User = require('./user');
 const EE = require('../eventemitter');
 
-// indexed by unpack.room.uri
-const cache = {};
 /**
  * Array<Object> where Object contains:
  *  - at @see timestamp.now()
@@ -23,6 +22,18 @@ let unread = [];
 // how many chat's we'll auto-fetch data for
 // after that you're on your own because we want fast boot times
 const MAX_UNREAD = 5;
+
+/**
+ *
+ * @returns Promise(Array<unpack.chat>)
+ */
+function fetchChats() {
+  return getChats().then(unpack.chats);
+}
+
+function fetchAvailableChats() {
+  return getAvailableRooms().then(unpack.availableRooms);
+}
 
 /**
  * Give me all my chats, please
@@ -132,7 +143,7 @@ function nextUnread() {
 /**
  * fetch threads from a chat, allows cache busting
  * without any paging returns the 5 most recently active threads
- * also includes the first ~10 messages of a thread. to laod more @see messages()
+ * also includes the first ~10 messages of a thread. to load more @see messages()
  *
  * @TODO support paging
  *
@@ -142,13 +153,13 @@ function nextUnread() {
  * @return {Boolean|unpack.thread}
  */
 async function threads(chat, ignoreCache = false) {
-  const c = _chat(chat);
-  if (!c.threads || ignoreCache || c.refreshNext) {
-    c.refreshNext = false;
-    c.threads = await fetchThreads(chat, timestamp.now());
-  }
-
-  return c.threads;
+  return _chat(chat).then(c => {
+    if (!c.threads || ignoreCache || c.refreshNext) {
+      c.refreshNext = false;
+      c.threads = fetchThreads(chat, timestamp.now());
+    }
+    return c.threads;
+  });
 }
 
 /**
@@ -287,10 +298,6 @@ function newThread(chat, id) {
   };
 }
 
-function _chat({ uri }) {
-  return cache[uri];
-}
-
 /**
  * fetch messages for a chat or thread
  *
@@ -316,11 +323,11 @@ function fetchMessages(obj, before) {
         const messages = rawMessages.map(unpack.message);
         messages.forEach(m => User.prefetch(m.user));
 
-        const thread = _thread(obj.room, obj);
-        if (messages.length === thread.total) {
-          // this mutates cache
-          thread.unfetched = 0;
-        }
+        // const thread = _thread(obj.room, obj);
+        // if (messages.length === thread.total) {
+        //   // this mutates cache
+        //   thread.unfetched = 0;
+        // }
 
         return messages;
       });
@@ -340,53 +347,17 @@ async function leave(chat) {
   }
 }
 
-EE.once('chats.loaded', () => {
-  EE.on('events.6', evt => {
-    try {
-      evt.user.room = evt.room;
-      User.prefetch(evt.user);
-      const msg = {
-        ...evt,
-        isUnread: true,
-      };
-      const c = _chat(evt.room);
-
-      if (c.isDm) {
-        c.messages = (c.messages || []).concat(msg);
-        c.isUnread = true;
-        markUnread(c);
-        EE.emit('messages.new', { chat: c });
-      } else {
-        const thread = _thread(evt.room, evt.thread);
-        thread.room = c;
-        thread.messages.push(msg);
-        thread.mostRecentAt = timestamp.now();
-        thread.total++;
-        thread.isUnread = true;
-
-        markUnread(thread);
-        // but we still want to tell screens/chats about it
-        EE.emit('messages.new', {
-          chat: c,
-          thread: thread,
-        });
-      }
-    } catch (e) {
-      console.log(e);
-    }
-  });
-});
-
 module.exports = {
   getAll,
   getGrouped,
-  threads,
-  moreThreads,
-  messages,
   nextUnread,
   markRead,
   markUnread,
   preview,
   join,
   leave,
+  fetchChats,
+  fetchAvailableChats,
+  fetchThreads,
+  fetchMessages,
 };

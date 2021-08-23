@@ -1,10 +1,7 @@
 const blessed = require('neo-blessed');
 const EE = require('../lib/eventemitter');
-const getAvailableRooms = require('../lib/api/get-available-rooms');
-const Chat = require('../lib/model/chat');
+const State = require('../lib/state');
 const format = require('../lib/format');
-const unpack = require('../lib/api/unpack');
-const working = require('./working');
 const {
   COLORS_ACTIVE_ITEM,
   COLORS_ACTIVE_SELECTED,
@@ -26,7 +23,7 @@ const input = blessed.textbox({
     type: 'line',
   },
   width: '100%',
-  height: '10%',
+  height: '10%+1',
   style: {
     fg: 'white',
   },
@@ -67,41 +64,24 @@ function filterResults() {
 }
 
 function display() {
+  search._data.visible = State.chats();
   results.setItems(search._data.visible.map(format.availableRoom));
   results.select(0);
   search.screen.render();
 }
 
-function open() {
-  input._data = { value: '' };
-  input.setValue('');
-
-  search.show();
-  input.focus();
-  results.setItems([format.placehold()]);
-  search.screen.render();
-}
-
-function populate(chats) {
-  results.set('label', `Searching ${chats.length}`);
-
-  search._data = { chats, visible: chats };
-  display();
-}
-
-function blur(found) {
+function blur() {
   search._data = {};
   results._data = {};
   input._data = {};
   search.hide();
   search.screen.render();
-  EE.emit('search.blur', found);
 }
 
 input.on('keypress', async (ch, key) => {
   switch (key.full) {
     case 'return':
-      return; // :(
+      return; // :(  ... there's a lot of pain here.
     case 'down':
     case 'linefeed':
       results.down();
@@ -116,13 +96,11 @@ input.on('keypress', async (ch, key) => {
     case 'C-p':
       return EE.emit('search.preview', selected());
     case 'enter':
-      working.show();
-      await Chat.join(selected());
       EE.emit('search.select', selected());
-      working.hide();
-      return blur(true);
+      return blur();
     case 'escape':
-      return blur(false);
+      EE.emit('search.close');
+      return blur();
     // these listeners need to be duplicated from screen
     // as input captures keys and doesn't bubble them
     case 'C-d':
@@ -142,20 +120,19 @@ input.on('keypress', async (ch, key) => {
   filterResults();
 });
 
-EE.on('search.remote', () => {
-  open();
-  getAvailableRooms().then(unpack.availableRooms).then(populate);
-});
+EE.on('search.activate', () => {
+  input._data = { value: '' };
+  input.setValue('');
 
-EE.on('search.local', () => {
-  open();
-  populate(Chat.getAll());
+  search.show();
+  input.focus();
+  results.setItems([format.placehold()]);
+  search.screen.render();
 });
-EE.on('threads.blur', fromPreview => {
-  if (fromPreview) {
-    input.focus();
-  }
+EE.on('search.reactivate', () => {
+  input.focus();
 });
+EE.on('search.update', display);
 
 module.exports = {
   search,

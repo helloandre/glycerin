@@ -1,4 +1,5 @@
 const blessed = require('neo-blessed');
+const State = require('../lib/state');
 const format = require('../lib/format');
 const Chat = require('../lib/model/chat');
 const EE = require('../lib/eventemitter');
@@ -8,6 +9,8 @@ const {
   COLORS_INACTIVE_ITEM,
   COLORS_INACTIVE_SELECTED,
 } = require('../../constants');
+
+const DEFAULT_CONTENT = ' Select A Room';
 
 const threads = blessed.list({
   label: 'Threads',
@@ -19,35 +22,47 @@ const threads = blessed.list({
     type: 'line',
   },
   // do not set a default style
-  items: ['Select A Room'],
+  content: DEFAULT_CONTENT,
   // mouse: true,
   // keys: true,
   // vi: true,
 });
-threads._data = {};
+threads._data = {
+  chat: false,
+  visible: [],
+};
 threads.thread = function () {
-  return threads._data.threads[threads.selected];
+  return threads._data.visible[threads.selected];
+};
+threads.loading = function () {
+  threads.setContent(format.placehold());
+};
+threads.wipe = function () {
+  threads.setContent(DEFAULT_CONTENT);
 };
 
-async function display(selectLast = true) {
-  if (!threads._data.threads.length) {
-    threads.setItems([format.placehold('no threads, yet')]);
+async function display() {
+  const displayable = State.threads();
+  if (!displayable) {
+    threads.wipe();
     threads.screen.render();
     return;
   }
 
-  const formatted = [];
-  // eslint-disable-next-line no-unused-vars
-  for (let thread of threads._data.threads) {
-    formatted.push(await format.thread(thread));
-  }
+  threads._data.visible = displayable;
 
-  threads.setItems(formatted);
-  if (selectLast) {
+  if (!displayable.length) {
+    threads.setContent(format.placehold('no threads, yet'));
+  } else {
+    const formatted = [];
+    // eslint-disable-next-line no-unused-vars
+    for (let thread of displayable) {
+      formatted.push(await format.thread(thread));
+    }
+    threads.setItems(formatted);
     threads.select(formatted.length - 1);
-    threads.emit('select item');
-    threads.screen.render();
   }
+  threads.screen.render();
 }
 
 async function up() {
@@ -66,6 +81,10 @@ async function up() {
     threads.screen.render();
   }
 }
+
+/**
+ * Keybindings
+ */
 
 threads.key('C-t n', () => {
   if (!threads._data.searchPreview) {
@@ -99,16 +118,12 @@ threads.key('enter', () => {
 threads.key(['escape', 'q'], () => {
   threads.style.item = COLORS_INACTIVE_ITEM;
   threads.style.selected = COLORS_INACTIVE_SELECTED;
-  EE.emit('threads.blur', threads._data.searchPreview);
-
-  // needs to be done before setItems() otherwise we attempt
-  // to threads.preview as a "set item" even gets triggered
-  threads._data = {};
-  threads.setItems(['Select A Room']);
-  threads.screen.render();
+  EE.emit('threads.blur');
 });
 
-// messages
+/**
+ * Send events to messages
+ */
 threads.key('C-k', () => EE.emit('messages.scroll.up'));
 threads.key('linefeed', () => EE.emit('messages.scroll.down'));
 threads.key('C-g', () => EE.emit('messages.scroll.top'));
@@ -128,97 +143,20 @@ threads.on('blur', () => {
   }
 });
 threads.on('select item', () => {
-  if (threads._data.chat) {
+  if (threads._data.visible.length) {
     EE.emit('threads.preview', threads.thread());
   }
 });
-EE.on('chats.select', async chat => {
-  if (!chat.isDm) {
-    threads.focus();
-    threads.setItems([format.placehold()]);
-    threads.screen.render();
 
-    threads._data = { chat, threads: await Chat.threads(chat) };
-    await display();
-  }
-});
-EE.on('chats.nextUnread', async chat => {
-  if (!chat) {
-    return;
-  }
-
-  if (chat.room) {
-    if (!threads._data.chat || chat.room.uri !== threads._data.chat.uri) {
-      threads.setItems([format.placehold()]);
-      threads.screen.render();
-    }
-
-    threads.style.item = COLORS_INACTIVE_ITEM;
-    threads.style.selected = COLORS_INACTIVE_SELECTED;
-
-    threads._data = {
-      chat: chat.room,
-      threads: await Chat.threads(chat.room),
-    };
-
-    await display(false);
-    const idx = threads._data.threads.findIndex(t => t.id === chat.id);
-    // we need to manually trigger `select item` as blessed doesn't think
-    // anything's changed here
-    if (idx === threads.selected) {
-      threads.emit('select item');
-    } else {
-      threads.select(idx);
-    }
-    threads.screen.render();
-  } else {
-    // we have an unread, but it's a DM
-    threads._data = {};
-    threads.setItems(['Select A Room']);
-    threads.screen.render();
-  }
-});
-EE.on('search.preview', async chat => {
+/**
+ * External Events
+ */
+EE.on('threads.activate', function () {
   threads.focus();
-  threads.setItems([format.placehold()]);
+  threads.loading();
   threads.screen.render();
-
-  threads._data = {
-    chat,
-    searchPreview: true,
-    threads: await Chat.preview(chat),
-  };
-  display();
 });
-
-EE.on('input.blur', from => {
-  if (from === 'threads') {
-    threads.focus();
-    EE.emit('threads.preview', threads.thread());
-  }
-});
-EE.on('screen.refresh', async () => {
-  if (threads._data && threads._data.chat) {
-    threads._data.threads = await Chat.threads(threads._data.chat, true);
-  }
-});
-EE.on('messages.new', async ({ chat, thread }) => {
-  if (!thread || !threads._data.chat) {
-    return;
-  }
-
-  if (threads._data.chat.uri === chat.uri) {
-    threads._data.threads = await Chat.threads(chat);
-    const idx = threads._data.threads.findIndex(t => t.id === thread.id);
-    if (idx >= threads.items.length) {
-      threads.appendItem(await format.thread(threads._data.threads[idx]));
-      threads.select(idx);
-    } else {
-      threads.setItem(idx, await format.thread(threads._data.threads[idx]));
-    }
-    Chat.markRead(thread);
-  }
-});
+EE.on('threads.update', display);
 
 module.exports = {
   threads,
