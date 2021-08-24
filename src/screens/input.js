@@ -65,10 +65,10 @@ input.on('focus', () => {
           // sendChatMessage(value, chat, history());
           // TODO figure out where in the protocol is history stored
           sendChatMessage(value, chat);
-        } else if (input._data.new) {
-          createThread(value, input._data.chat);
+        } else if (chat.threaded) {
+          sendThreadMessage(value, State.thread());
         } else {
-          sendThreadMessage(value, input._data.thread);
+          createThread(value, chat);
         }
       }
 

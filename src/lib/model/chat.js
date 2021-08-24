@@ -92,22 +92,8 @@ function getAll() {
  * @param {unpack.chat|unpack.thread} obj
  */
 function markRead(obj) {
-  const before = unread.length;
-  unread = unread.filter(u => u.id !== obj.id || u.uri !== obj.uri);
-  if (before !== unread.length) {
-    // fire and forget
-    markReadAPI(obj);
-
-    const c = _chat(obj.room ? obj.room : obj);
-    if (c) {
-      c.isUnread = false;
-
-      if (c.threads) {
-        c.threads.forEach(t => (t.isUnread = false));
-      }
-      EE.emit('chats.read', c);
-    }
-  }
+  // fire and forget
+  markReadAPI(obj);
 }
 
 /**
@@ -305,7 +291,7 @@ function newThread(chat, id) {
  * @param {String} before - @see timestamp.now()
  */
 function fetchMessages(obj, before) {
-  return obj.isDm
+  return obj.isDm || obj.isGroup
     ? getChatMessages(obj, before).then(rawMessages => {
         // empty messages returns null
         if (rawMessages) {
@@ -334,17 +320,11 @@ function fetchMessages(obj, before) {
 }
 
 async function join(chat) {
-  if (!cache[chat.uri]) {
-    await setRoomMembership(chat, await User.whoami(), true);
-    cache[chat.uri] = chat;
-  }
+  return setRoomMembership(chat, await User.whoami(), true);
 }
 
 async function leave(chat) {
-  if (cache[chat.uri]) {
-    await setRoomMembership(chat, await User.whoami(), false);
-    delete cache[chat.uri];
-  }
+  return setRoomMembership(chat, await User.whoami(), false);
 }
 
 module.exports = {

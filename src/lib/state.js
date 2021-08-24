@@ -36,17 +36,31 @@ function _fetchChats() {
 function _selectChat(chat) {
   _active.chat = chat.uri;
   if (chat.isDm) {
-    // TODO
-    return;
+    EE.emit('messages.activate');
+    Chat.fetchMessages(chat, timestamp.now()).then(msgs => {
+      _chats[chat.uri].messages = msgs;
+      EE.emit('messages.update');
+      EE.emit('input.focus');
+    });
   } else {
-    EE.emit('threads.activate');
+    if (chat.threaded) {
+      EE.emit('threads.activate');
+    } else {
+      EE.emit('messages.activate');
+    }
     // TODO check cache
     Chat.fetchThreads(chat, timestamp.now()).then(ts => {
       _threads[chat.uri] = {};
-      ts.forEach(thread => {
-        _threads[chat.uri][thread.id] = thread;
+      ts.forEach(t => {
+        _threads[chat.uri][t.id] = t;
       });
-      EE.emit('threads.update');
+
+      if (chat.threaded) {
+        EE.emit('threads.update');
+      } else {
+        EE.emit('messages.update');
+        EE.emit('input.focus');
+      }
     });
   }
 }
@@ -56,14 +70,30 @@ function markUnread(obj) {
   _unread = [
     {
       id: obj.id,
-      uri: obj.uri,
-      isDm: obj.isDm,
+      uri: obj.uri || obj.room.uri,
+      isDm: !!obj.isDm,
       at: parseInt(obj.mostRecentAt, 10),
     },
   ]
     // remove any existing instances so we don't try to come back to it later
-    .concat(unread.filter(u => u.id !== obj.id || u.uri !== obj.uri))
+    .concat(_unread.filter(u => u.id !== obj.id || u.uri !== obj.uri))
     .sort((a, b) => (a.at > b.at ? -1 : 1));
+}
+
+function markRead(obj) {
+  const beforeLen = unread.length;
+  unread = unread.filter(o => o.id !== obj.id || o.uri !== obj.uri);
+  // if it's not in our unread queue, nothing to do here...
+  if (beforeLen !== unread.length) {
+    // fire and forget
+    Chat.markRead(obj);
+
+    if (obj.isDm) {
+      _chats[obj.uri].isUnread = false;
+    } else {
+      _threads[obj.uri][obj.id].isUnread = false;
+    }
+  }
 }
 
 /**
@@ -77,11 +107,12 @@ EE.on('screen.ready', () => {
     EE.emit('chats.update');
   });
 });
+
 EE.on('search.local', () => {
   _active.search = true;
   _search.mode = 'local';
   EE.emit('search.activate');
-  EE.emit('search.update');
+  EE.emit('search.bootstrap');
 });
 EE.on('search.remote', () => {
   _active.search = true;
@@ -90,7 +121,7 @@ EE.on('search.remote', () => {
 
   Chat.fetchAvailableChats().then(available => {
     _search.available = available;
-    EE.emit('search.update');
+    EE.emit('search.bootstrap');
   });
 });
 EE.on('search.preview', chat => {
@@ -104,20 +135,25 @@ EE.on('search.close', chat => {
 EE.on('search.select', chat => {
   _active.search = false;
   EE.emit('working.activate');
-  Chat.join(chat).then(() => {
-    EE.emit('working.deactivate');
-    EE.emit('chats.select', chat);
-  });
+
+  if (_search.mode === 'local') {
+    _selectChat(chat);
+  } else {
+    Chat.join(chat).then(() => {
+      EE.emit('working.deactivate');
+      _selectChat(chat);
+    });
+  }
 });
 EE.on('chats.select', chat => {
   _selectChat(chat);
 });
-EE.on('threads.preview', thread => {
-  _active.thread = thread.id;
+EE.on('threads.preview', t => {
+  _active.thread = t.id;
   EE.emit('messages.update');
 });
-EE.on('threads.select', thread => {
-  _active.thread = thread.id;
+EE.on('threads.select', t => {
+  _active.thread = t.id;
   EE.emit('messages.update');
   EE.emit('input.focus');
 });
@@ -129,13 +165,36 @@ EE.on('threads.blur', () => {
 
   if (_active.search) {
     EE.emit('search.reactivate');
+  } else {
+    EE.emit('chats.activate');
   }
 });
+EE.on('input.blur', () => {
+  if (chat().isDm) {
+    _active.thread = false;
+    _active.chat = false;
+    EE.emit('chats.activate');
+  } else {
+    _active.thread = false;
+    EE.emit('threads.activate');
+  }
+
+  EE.emit('threads.update');
+  EE.emit('messages.update');
+});
 EE.on('messages.expand', () => {
-  Chat.fetchMessages(_threads[_active.thread], timestamp.now()).then(msgs => {
-    _threads[thread.room.uri][thread.id].messages = msgs;
+  const t = thread();
+  if (t.unfetched > 0) {
+    _threads[t.room.uri][t.id].loading = true;
     EE.emit('messages.update');
-  });
+
+    Chat.fetchMessages(t, timestamp.now()).then(msgs => {
+      _threads[t.room.uri][t.id].loading = false;
+      _threads[t.room.uri][t.id].messages = msgs;
+      _threads[t.room.uri][t.id].unfetched = thread().total - msgs.length;
+      EE.emit('messages.update');
+    });
+  }
 });
 EE.on('unread.next', () => {
   if (_unread.length) {
@@ -167,34 +226,40 @@ EE.once('chats.update', () => {
         isUnread: true,
       };
 
+      chat.isUnread = true;
+
       if (chat.isDm) {
         chat.messages = (c.messages || []).concat(msg);
-        chat.isUnread = true;
 
         _chats[chat.uri] = chat;
-        markUnread(chat);
+        // markUnread(chat);
       } else {
-        const thread = _threads[evt.thread.id]
-          ? _threads[evt.thread.id]
-          : {
-              id,
-              room: {
-                uri: chat.uri,
-                id: chat.id,
-                displayName: chat.displayName,
-              },
-              messages: [],
-              total: 0,
-            };
+        if (!_threads[chat.uri]) {
+          _threads[chat.uri] = {};
+        }
 
-        thread.messages.push(msg);
-        thread.mostRecentAt = timestamp.now();
-        thread.total++;
-        thread.isUnread = true;
+        if (!_threads[chat.uri][evt.thread.id]) {
+          _threads[chat.uri][evt.thread.id] = {
+            id: evt.thread.id,
+            room: {
+              uri: chat.uri,
+              id: chat.id,
+              displayName: chat.displayName,
+            },
+            messages: [],
+            total: 0,
+          };
+        }
 
-        _threads[thread.id] = thread;
+        _threads[chat.uri][evt.thread.id] = {
+          ..._threads[chat.uri][evt.thread.id],
+          messages: _threads[chat.uri][evt.thread.id].messages.concat(msg),
+          mostRecentAt: timestamp.now(),
+          total: _threads[chat.uri][evt.thread.id].total + 1,
+          isUnread: true,
+        };
 
-        markUnread(thread);
+        // markUnread(_threads[chat.uri][evt.thread.id]);
       }
     }
 
@@ -225,30 +290,46 @@ function chat() {
 }
 
 function threads() {
-  if (!_active.chat) {
+  if (!_active.chat || !_threads[_active.chat] || chat().isDm) {
     return false;
   }
 
   return Object.entries(_threads[_active.chat])
     .map(([_, val]) => val)
-    .sort((a, b) => (a.mostRecentAt > b.mostRecentAt ? -1 : 1));
+    .sort((a, b) => (a.mostRecentAt > b.mostRecentAt ? 1 : -1));
+}
+
+function thread() {
+  return _threads[_active.chat][_active.thread];
 }
 
 function messages() {
-  if (!_active.thread) {
+  if (!_active.chat) {
     return false;
   }
 
-  if (_active.chat.isDm) {
-    return;
+  const c = chat();
+  if (c.isDm) {
+    return c;
+  } else if (!c.threaded) {
+    // groups look like rooms, but each message is a new thread
+    return Object.entries(_threads[_active.chat]).reduce((acc, [_, t]) => {
+      if (!acc.id) {
+        acc = t;
+      } else {
+        acc.messages = acc.messages.concat(t.messages);
+      }
+      return acc;
+    }, {});
   } else {
-    return _threads[_active.chat][_active.thread];
+    return thread();
   }
 }
 
 module.exports = {
   chat,
   chats,
+  thread,
   threads,
   messages,
 };

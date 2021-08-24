@@ -64,11 +64,27 @@ function user(u, r) {
   };
 }
 
+function roomUsers(c) {
+  // normal room
+  if (c[17]) {
+    return c[17].map(u => user(u, c[0]));
+  }
+
+  // group
+  if (c[55]) {
+    return c[55].map(u => user(u, c[0]));
+  }
+
+  return [];
+}
+
 function chat(c) {
   return {
     _raw: c,
     ...roomMeta(c[0]),
     isUnread: c[6],
+    isGroup: !!c[55],
+    threaded: c[25], // confidence level: 75%
     // not sure about these, but these are the indexes
     // that change from null -> true between chats
     // that should and shouldn't alert
@@ -77,9 +93,10 @@ function chat(c) {
     mostRecentAt: c[8],
     mostRecentReadAt: c[9],
     // seems to be duplicated in c[43]
-    users: c[17] ? c[17].map(u => user(u, c[0])) : [],
+    users: roomUsers(c),
   };
 }
+
 function fave(c) {
   return { ...chat(c), isFave: true };
 }

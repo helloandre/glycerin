@@ -35,10 +35,12 @@ threads.thread = function () {
   return threads._data.visible[threads.selected];
 };
 threads.loading = function () {
-  threads.setContent(format.placehold());
+  threads._data.visible = [];
+  threads.setItems([format.placehold()]);
 };
 threads.wipe = function () {
-  threads.setContent(DEFAULT_CONTENT);
+  threads._data.visible = [];
+  threads.setItems([DEFAULT_CONTENT]);
 };
 
 async function display() {
@@ -153,7 +155,9 @@ threads.on('select item', () => {
  */
 EE.on('threads.activate', function () {
   threads.focus();
-  threads.loading();
+  if (!State.threads()) {
+    threads.loading();
+  }
   threads.screen.render();
 });
 EE.on('threads.update', display);

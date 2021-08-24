@@ -54,17 +54,16 @@ function selected() {
 function filterResults() {
   if (input._data.value) {
     const by = input._data.value.toLowerCase();
-    search._data.visible = search._data.chats.filter(r =>
+    search._data.visible = search._data.available.filter(r =>
       r.normalizedName.includes(by)
     );
   } else {
-    search._data.visible = search._data.chats;
+    search._data.visible = search._data.available;
   }
   display();
 }
 
 function display() {
-  search._data.visible = State.chats();
   results.setItems(search._data.visible.map(format.availableRoom));
   results.select(0);
   search.screen.render();
@@ -131,6 +130,11 @@ EE.on('search.activate', () => {
 });
 EE.on('search.reactivate', () => {
   input.focus();
+});
+EE.on('search.bootstrap', () => {
+  search._data.available = State.chats();
+  search._data.visible = State.chats();
+  display();
 });
 EE.on('search.update', display);
 
