@@ -17,9 +17,11 @@ module.exports = function (chat, before, preview = false) {
         false,
         true,
         null,
+        false,
         null,
-        null,
-        [],
+        [1, false],
+        false,
+        false,
       ];
   return request('POST', URL_DATA, {
     'f.req': JSON.stringify([
@@ -37,6 +39,5 @@ module.exports = function (chat, before, preview = false) {
         ],
       ],
     ]),
-  }).then(resp => resp[ACTIONID_GET_CHAT_THREADS][0]);
-  // resp has some other metadata, but don't know what it is quite yet
+  }).then(resp => resp[ACTIONID_GET_CHAT_THREADS]);
 };

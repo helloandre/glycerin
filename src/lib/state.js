@@ -35,6 +35,7 @@ function _fetchChats() {
 
 function _selectChat(chat) {
   _active.chat = chat.uri;
+
   if (chat.isDm) {
     EE.emit('messages.activate');
     Chat.fetchMessages(chat, timestamp.now()).then(msgs => {
@@ -50,8 +51,9 @@ function _selectChat(chat) {
     }
     // TODO check cache
     Chat.fetchThreads(chat, timestamp.now()).then(ts => {
+      _chats[chat.uri].hasMoreThreads = ts.hasMore;
       _threads[chat.uri] = {};
-      ts.forEach(t => {
+      ts.threads.forEach(t => {
         _threads[chat.uri][t.id] = t;
       });
 
@@ -170,7 +172,7 @@ EE.on('threads.blur', () => {
   }
 });
 EE.on('input.blur', () => {
-  if (chat().isDm) {
+  if (chat().isDm || !chat().threaded) {
     _active.thread = false;
     _active.chat = false;
     EE.emit('chats.activate');
@@ -184,7 +186,7 @@ EE.on('input.blur', () => {
 });
 EE.on('messages.expand', () => {
   const t = thread();
-  if (t.unfetched > 0) {
+  if (t && t.unfetched > 0) {
     _threads[t.room.uri][t.id].loading = true;
     EE.emit('messages.update');
 
@@ -290,7 +292,7 @@ function chat() {
 }
 
 function threads() {
-  if (!_active.chat || !_threads[_active.chat] || chat().isDm) {
+  if (!_active.chat || !_threads[_active.chat] || !chat().threaded) {
     return false;
   }
 
@@ -313,14 +315,19 @@ function messages() {
     return c;
   } else if (!c.threaded) {
     // groups look like rooms, but each message is a new thread
-    return Object.entries(_threads[_active.chat]).reduce((acc, [_, t]) => {
-      if (!acc.id) {
-        acc = t;
-      } else {
-        acc.messages = acc.messages.concat(t.messages);
+    return Object.entries(_threads[_active.chat]).reduce(
+      (acc, [_, t]) => {
+        if (!acc.messages) {
+          acc.messages = t.messages;
+        } else {
+          acc.messages = acc.messages.concat(t.messages);
+        }
+        return acc;
+      },
+      {
+        hasMore: !c.threaded && c.hasMoreThreads,
       }
-      return acc;
-    }, {});
+    );
   } else {
     return thread();
   }

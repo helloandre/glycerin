@@ -8,20 +8,6 @@ const setRoomMembership = require('../api/set-room-membership');
 const markReadAPI = require('../api/mark-read');
 const unpack = require('../api/unpack');
 const User = require('./user');
-const EE = require('../eventemitter');
-
-/**
- * Array<Object> where Object contains:
- *  - at @see timestamp.now()
- *  - id
- *  - uri - only on chats
- *  - room - only on threads
- */
-let unread = [];
-
-// how many chat's we'll auto-fetch data for
-// after that you're on your own because we want fast boot times
-const MAX_UNREAD = 5;
 
 /**
  *
@@ -36,56 +22,6 @@ function fetchAvailableChats() {
 }
 
 /**
- * Give me all my chats, please
- * broken up into sections:
- *   - favorites (starred)
- *   - dms
- *   - rooms
- *   - bots
- *
- * @see unpack.chats
- */
-function getGrouped() {
-  return getChats()
-    .then(unpack.chats)
-    .then(async chats => {
-      let unreadCount = 0;
-
-      // eslint-disable-next-line no-unused-vars
-      for (let [type, group] of Object.entries(chats)) {
-        for (let chat of group) {
-          cache[chat.uri] = chat;
-          chat.users.forEach(User.prefetch);
-
-          // chats are ordered by unread from the endpoint
-          // so we're kinda cheating here
-          if (chat.isUnread) {
-            if (chat.isDm) {
-              // we get dms for free
-              markUnread(chat);
-            } else if (unreadCount < MAX_UNREAD) {
-              // this is unfortunate. we're blocking initial load on unread messages :(
-              (await threads(chat)).filter(t => t.isUnread).forEach(markUnread);
-            }
-            unreadCount++;
-          }
-        }
-      }
-
-      return chats;
-    });
-}
-
-/**
- * this assumes getGrouped has been called
- *
- * @return {Array<unpack.chat>}
- */
-function getAll() {
-  return Object.entries(cache).map(c => c[1]);
-}
-
-/**
  * remove this object from our unread queue, potentially out of order
  * and tell the server that it's been read
  *
@@ -94,68 +30,6 @@ function getAll() {
 function markRead(obj) {
   // fire and forget
   markReadAPI(obj);
-}
-
-/**
- * some assumptions here:
- *
- * @param {unpack.chat|unpack.thread} obj
- */
-async function markUnread(obj) {
-  // put this object at the front of unread
-  unread = [
-    {
-      id: obj.id,
-      uri: obj.uri,
-      room: obj.room,
-      at: parseInt(obj.mostRecentAt, 10),
-    },
-  ]
-    // remove any existing instances so we don't try to come back to it later
-    .concat(unread.filter(u => u.id !== obj.id || u.uri !== obj.uri));
-
-  unread.sort((a, b) => (a.at > b.at ? -1 : 1));
-}
-
-/**
- * get the next unread chat and/or thread
- *
- * @return {Object}
- */
-function nextUnread() {
-  return unread.shift();
-}
-
-/**
- * fetch threads from a chat, allows cache busting
- * without any paging returns the 5 most recently active threads
- * also includes the first ~10 messages of a thread. to load more @see messages()
- *
- * @TODO support paging
- *
- * @param {unpack.chat} chat
- * @param {Boolean} ignoreCache
- *
- * @return {Boolean|unpack.thread}
- */
-async function threads(chat, ignoreCache = false) {
-  return _chat(chat).then(c => {
-    if (!c.threads || ignoreCache || c.refreshNext) {
-      c.refreshNext = false;
-      c.threads = fetchThreads(chat, timestamp.now());
-    }
-    return c.threads;
-  });
-}
-
-/**
- * this never caches fetched threads,
- * assumes chat does not exist in cache
- *
- * @param {unpack.chat} chat
- */
-function preview(chat) {
-  return fetchThreads(chat);
 }
 
 /**
@@ -203,10 +77,12 @@ function fetchThreads(chat, before, preview = false) {
   }
 
   return getChatThreads(chat, before, preview).then(ts => {
-    const unpacked = ts.map(unpack.thread).filter(t => !t.isMembershipUpdate);
+    const unpacked = unpack.thread(ts);
     // we have to let the users cache know about all the users we just saw
     // so that when we go to display them we fetch all at once
-    unpacked.forEach(t => t.messages.forEach(m => User.prefetch(m.user)));
+    unpacked.threads.forEach(t =>
+      t.messages.forEach(m => User.prefetch(m.user))
+    );
 
     return unpacked;
   });
@@ -328,12 +204,7 @@ async function leave(chat) {
 }
 
 module.exports = {
-  getAll,
-  getGrouped,
-  nextUnread,
   markRead,
-  markUnread,
-  preview,
   join,
   leave,
   fetchChats,

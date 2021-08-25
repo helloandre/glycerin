@@ -9,6 +9,13 @@
  */
 
 function thread(t) {
+  return {
+    hasMore: !t[4], // why is this inverted, gchat?
+    threads: t[0].map(_thread),
+  };
+}
+
+function _thread(t) {
   const messages = t[4].map(message);
   return {
     _raw: t,

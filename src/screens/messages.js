@@ -54,6 +54,11 @@ async function display() {
     formatted.splice(1, 0, format.placehold(str));
   }
 
+  // for unthreaded rooms/DMs we want to let them know they can load more
+  if (displayable.hasMore) {
+    formatted.unshift(format.placehold('load more'));
+  }
+
   messages.setContent(formatted.join('\n'));
   messages.setScrollPerc(100);
   messages.screen.render();
@@ -69,10 +74,14 @@ EE.on('messages.scroll.bottom', () => {
 EE.on('messages.scroll.up', () => {
   messages.scroll(-1);
   messages.screen.render();
+  if (messages.getScroll() === 0) {
+    EE.emit('messages.at.top');
+  }
 });
 EE.on('messages.scroll.top', () => {
   messages.scrollTo(0);
   messages.screen.render();
+  EE.emit('messages.at.top');
 });
 EE.on('messages.update', display);
 EE.on('messages.activate', () => {
