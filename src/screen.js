@@ -1,6 +1,5 @@
 const blessed = require('neo-blessed');
 const EE = require('./lib/eventemitter');
-const Chat = require('./lib/model/chat');
 
 function bootstrap() {
   /**

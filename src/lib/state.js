@@ -107,6 +107,8 @@ EE.on('screen.ready', () => {
   _fetchChats().then(() => {
     EE.emit('chats.activate');
     EE.emit('chats.update');
+    // TODO use this instead. wtf were you thinking?
+    EE.emit('state.chats.loaded');
   });
 });
 

@@ -1,9 +1,11 @@
 const blessed = require('neo-blessed');
-const Chat = require('../lib/model/chat');
+const EE = require('../lib/eventemitter');
+const State = require('../lib/state');
 const User = require('../lib/model/user');
 const format = require('../lib/format');
 const setRoomMembership = require('../lib/api/set-room-membership');
 const hideChat = require('../lib/api/hide-chat');
+
 const {
   COLORS_ACTIVE_ITEM,
   COLORS_ACTIVE_SELECTED,
@@ -20,7 +22,8 @@ const screen = blessed.screen({
   },
 });
 const prune = blessed.box({
-  label: 'Select Chats To Leave/Hide. "spacebar" to select, "enter" when done.',
+  label:
+    '"spacebar" to select, "enter" when done. "h/l" or "left/right arrow" to select dms or rooms.',
   height: '100%',
   width: '100%',
   top: 0,
@@ -90,8 +93,8 @@ const progress = blessed.progressbar({
   },
   filled: 0,
 });
-rooms._data = {};
-dms._data = {};
+rooms._data = { rooms: [] };
+dms._data = { dms: [] };
 screen.append(prune);
 screen.append(confirm);
 screen.append(progress);
@@ -134,17 +137,23 @@ dms.on('focus', () => {
   dms.style.selected = COLORS_ACTIVE_SELECTED;
   screen.render();
 });
+EE.on('state.chats.loaded', () => {
+  State.chats().forEach(c => {
+    if (c.isDm) {
+      dms._data.dms.push(c);
+    } else {
+      rooms._data.rooms.push(c);
+    }
+  });
+  display();
+});
 
 function bootstrap() {
   rooms.focus();
   rooms.setItems([format.placehold()]);
   screen.render();
 
-  Chat.getGrouped().then(chats => {
-    rooms._data.rooms = chats.rooms;
-    dms._data.dms = chats.dms;
-    display();
-  });
+  EE.emit('screen.ready');
 }
 
 function toggle() {
