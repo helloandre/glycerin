@@ -33,37 +33,40 @@ function _fetchChats() {
   });
 }
 
+function _fetchThreads(chat, tsp) {
+  _chats[chat.uri].loading = true;
+
+  Chat.fetchThreads(chat, tsp).then(ts => {
+    _chats[chat.uri].loading = false;
+    _chats[chat.uri].hasMoreThreads = ts.hasMore;
+    _threads[chat.uri] = {};
+    ts.threads.forEach(t => {
+      _threads[chat.uri][t.id] = t;
+    });
+    // for when we need to fetch more
+    _chats[chat.uri].moreTimestamp = timestamp.more(ts.threads[0].mostRecentAt);
+
+    if (chat.isThreaded) {
+      EE.emit('state.threads.updated');
+    } else {
+      EE.emit('state.messages.updated');
+    }
+  });
+}
+
 function _selectChat(chat) {
   _active.chat = chat.uri;
+  _chats[chat.uri].loading = true;
+  EE.emit('state.chats.loading');
 
   if (chat.isDm) {
-    EE.emit('messages.activate');
     Chat.fetchMessages(chat, timestamp.now()).then(msgs => {
+      _chats[chat.uri].loading = false;
       _chats[chat.uri].messages = msgs;
-      EE.emit('messages.update');
-      EE.emit('input.focus');
+      EE.emit('state.messages.updated');
     });
   } else {
-    if (chat.threaded) {
-      EE.emit('threads.activate');
-    } else {
-      EE.emit('messages.activate');
-    }
-    // TODO check cache
-    Chat.fetchThreads(chat, timestamp.now()).then(ts => {
-      _chats[chat.uri].hasMoreThreads = ts.hasMore;
-      _threads[chat.uri] = {};
-      ts.threads.forEach(t => {
-        _threads[chat.uri][t.id] = t;
-      });
-
-      if (chat.threaded) {
-        EE.emit('threads.update');
-      } else {
-        EE.emit('messages.update');
-        EE.emit('input.focus');
-      }
-    });
+    _fetchThreads(chat, timestamp.now());
   }
 }
 
@@ -105,10 +108,8 @@ function markRead(obj) {
 EE.on('screen.ready', () => {
   // fetch only once, rely on events incomming to update any state
   _fetchChats().then(() => {
-    EE.emit('chats.activate');
-    EE.emit('chats.update');
-    // TODO use this instead. wtf were you thinking?
-    EE.emit('state.chats.loaded');
+    EE.emit('state.chats.updated');
+    EE.emit('state.fetched');
   });
 });
 
@@ -158,33 +159,37 @@ EE.on('threads.preview', t => {
 });
 EE.on('threads.select', t => {
   _active.thread = t.id;
-  EE.emit('messages.update');
-  EE.emit('input.focus');
+  EE.emit('state.messages.updated');
 });
 EE.on('threads.blur', () => {
   _active.thread = false;
   _active.chat = false;
-  EE.emit('threads.update');
-  EE.emit('messages.update');
 
   if (_active.search) {
     EE.emit('search.reactivate');
   } else {
     EE.emit('chats.activate');
   }
+
+  EE.emit('state.chats.updated');
+  EE.emit('state.threads.updated');
+});
+EE.on('threads.fetchMore', () => {
+  const c = chat();
+  _fetchThreads(c, c.moreTimestamp);
 });
 EE.on('input.blur', () => {
-  if (chat().isDm || !chat().threaded) {
+  const c = chat();
+  if (c.isDm || !c.isThreaded) {
     _active.thread = false;
     _active.chat = false;
-    EE.emit('chats.activate');
   } else {
     _active.thread = false;
-    EE.emit('threads.activate');
   }
 
-  EE.emit('threads.update');
-  EE.emit('messages.update');
+  EE.emit('state.threads.updated');
+  EE.emit('state.messages.updated');
+  EE.emit('state.chats.updated');
 });
 EE.on('messages.expand', () => {
   const t = thread();
@@ -210,7 +215,7 @@ EE.on('unread.next', () => {
   }
 });
 
-EE.once('chats.update', () => {
+EE.once('state.fetched', () => {
   // new message
   EE.on('events.6', async evt => {
     const chat = _chats[evt.room.uri];
@@ -267,9 +272,9 @@ EE.once('chats.update', () => {
       }
     }
 
-    EE.emit('chats.update');
-    EE.emit('threads.update');
-    EE.emit('messages.update');
+    EE.emit('state.chats.updated');
+    EE.emit('state.threads.updated');
+    EE.emit('state.messages.updated');
   });
 });
 
@@ -294,17 +299,26 @@ function chat() {
 }
 
 function threads() {
-  if (!_active.chat || !_threads[_active.chat] || !chat().threaded) {
+  if (!_active.chat || !chat().isThreaded) {
     return false;
   }
 
-  return Object.entries(_threads[_active.chat])
-    .map(([_, val]) => val)
-    .sort((a, b) => (a.mostRecentAt > b.mostRecentAt ? 1 : -1));
+  if (chat().loading) {
+    return { loading: true, threads: [] };
+  }
+
+  return {
+    loading: false,
+    threads: Object.entries(_threads[_active.chat])
+      .map(([_, val]) => val)
+      .sort((a, b) => (a.mostRecentAt > b.mostRecentAt ? 1 : -1)),
+  };
 }
 
 function thread() {
-  return _threads[_active.chat][_active.thread];
+  return _active.chat && _active.thread
+    ? _threads[_active.chat][_active.thread]
+    : false;
 }
 
 function messages() {
@@ -315,7 +329,15 @@ function messages() {
   const c = chat();
   if (c.isDm) {
     return c;
-  } else if (!c.threaded) {
+  } else if (!c.isThreaded) {
+    if (!_threads[_active.chat]) {
+      return false;
+    }
+
+    if (c.isLoading) {
+      return c;
+    }
+
     // groups look like rooms, but each message is a new thread
     return Object.entries(_threads[_active.chat]).reduce(
       (acc, [_, t]) => {
@@ -327,7 +349,7 @@ function messages() {
         return acc;
       },
       {
-        hasMore: !c.threaded && c.hasMoreThreads,
+        hasMore: !c.isThreaded && c.hasMoreThreads,
       }
     );
   } else {

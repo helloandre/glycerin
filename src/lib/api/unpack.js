@@ -87,15 +87,16 @@ function roomUsers(c) {
 
 function chat(c) {
   return {
-    _raw: c,
+    // _raw: c,
     ...roomMeta(c[0]),
     isUnread: c[6],
     isGroup: !!c[55],
-    threaded: c[25], // confidence level: 75%
-    // not sure about these, but these are the indexes
-    // that change from null -> true between chats
-    // that should and shouldn't alert
-    // shouldAlert: c[28] || c[33],
+    isThreaded: c[26] === null,
+    // 0 === all messages
+    // 1 === @'s + followed threads + new threads
+    // 2 === @'s + followed threads
+    // 3 === @'s
+    nofityLevel: c[54],
     ...chatName(c),
     mostRecentAt: c[8],
     mostRecentReadAt: c[9],
@@ -145,7 +146,7 @@ function roomMeta(m) {
 
 function chats(cs) {
   return [].concat(
-    cs[2].map(fave), // favorites
+    (cs[2] || []).map(fave), // favorites
     cs[7].map(chat), // dms
     cs[8].map(chat), // rooms
     (cs[9] || []).map(chat).map(c => {
@@ -153,15 +154,6 @@ function chats(cs) {
       return c;
     }) // bots
   );
-  // return {
-  // cs[0] seems to be some kind of aggregation of all rooms?
-  // but it doesn't include favorites
-  // favorites: cs[2].map(fave),
-  // dms: cs[7].map(chat),
-  // rooms: cs[8].map(chat),
-  // bots: (cs[9] || []).map(chat),
-  // dmsClosed: cs[15]
-  // };
 }
 
 /**
@@ -292,13 +284,18 @@ function _withUUID(base, type, data) {
           // ?: data[9][0][4], -> 1 // is bot?
         },
       };
-    // something like "number of unread in this room/thread"
+    // number of unread in this room
     case 13:
       return {
         ...base,
         unreadCount: parseInt(data[10][0], 10),
         // another weird room shape
         ..._mark_read_room(data[10]),
+      };
+    case 16:
+      return {
+        ...base,
+        something: data[14],
       };
     // toggle notifications
     case 18:
@@ -331,6 +328,9 @@ function _withUUID(base, type, data) {
     // connection started / new session started
     case 33:
       return base;
+    // ????? (maybe someone came online/offline?)
+    case 45:
+      return base;
   }
 }
 
@@ -345,6 +345,24 @@ function _event_msg(msg) {
     },
     text: {
       raw: msg[9],
+      formatting: msg[10]
+        ? msg[10].map(fmt => ({
+            unknownValue: fmt[0],
+            rawIndex: fmt[1],
+            length: fmt[2],
+            // 5 == monospace text (inside `)
+            // 6 == `
+            // 7 == block text (inside ```)
+            type: fmt[7] ? fmt[7][0] : null,
+            link: fmt[6]
+              ? {
+                  prefetchTitle: fmt[6][0],
+                  raw: fmt[6][6][2],
+                  domain: fmt[6][7],
+                }
+              : null,
+          }))
+        : [],
     },
     user: {
       name: typeof msg[1] === 'string' ? msg[1] : undefined,

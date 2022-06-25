@@ -1,7 +1,7 @@
 const blessed = require('neo-blessed');
 const format = require('../lib/format');
 const State = require('../lib/state');
-const Chat = require('../lib/model/chat');
+// const Chat = require('../lib/model/chat');
 const EE = require('../lib/eventemitter');
 
 const DEFAULT_CONTENT = ' Select A Chat or Thread';
@@ -35,8 +35,12 @@ async function display() {
     return;
   }
 
-  if (!displayable.messages.length) {
-    messages.setContent(format.placehold('no messages, yet'));
+  if (!displayable.messages || !displayable.messages.length) {
+    if (displayable.loading) {
+      messages.setContent(format.placehold('loading'));
+    } else {
+      messages.setContent(format.placehold('no messages, yet'));
+    }
     messages.screen.render();
     return;
   }
@@ -83,11 +87,8 @@ EE.on('messages.scroll.top', () => {
   messages.screen.render();
   EE.emit('messages.at.top');
 });
-EE.on('messages.update', display);
-EE.on('messages.activate', () => {
-  messages.setContent(format.placehold());
-  messages.screen.render();
-});
+EE.on('state.chats.loading', display);
+EE.on('state.messages.updated', display);
 
 module.exports = {
   messages,

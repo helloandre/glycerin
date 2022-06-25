@@ -25,7 +25,7 @@ auth.init(opts).then(() => {
   if (opts['--events']) {
     events();
     EE.on('events.*', evt => {
-      console.log(evt);
+      console.log(JSON.stringify(evt, null, 2));
     });
   } else if (opts.leave) {
     const Prune = require('./src/screens/prune');

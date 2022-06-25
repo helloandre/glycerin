@@ -74,13 +74,15 @@ chats.on('blur', () => {
 /**
  * External events
  */
-EE.on('chats.update', display);
-EE.on('chats.activate', () => {
-  chats.focus();
-  chats.screen.render();
+EE.on('state.chats.updated', () => {
+  const c = State.chat();
+  if (!c) {
+    chats.focus();
+  }
+  display();
 });
 
-async function display() {
+function display() {
   // Object.keys(chats._data.config).forEach(type => {
   //   // ugh
   //   const displayable = allChats.filter(chat => chatType(chat) === type);

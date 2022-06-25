@@ -1,7 +1,6 @@
 const blessed = require('neo-blessed');
 const State = require('../lib/state');
 const format = require('../lib/format');
-const Chat = require('../lib/model/chat');
 const EE = require('../lib/eventemitter');
 const {
   COLORS_ACTIVE_ITEM,
@@ -23,6 +22,14 @@ const threads = blessed.list({
   },
   // do not set a default style
   content: DEFAULT_CONTENT,
+  scrollable: true,
+  scrollbar: {
+    style: {
+      fg: 'black',
+      bg: 'white',
+    },
+  },
+  alwaysScroll: true,
   // mouse: true,
   // keys: true,
   // vi: true,
@@ -34,50 +41,52 @@ threads._data = {
 threads.thread = function () {
   return threads._data.visible[threads.selected];
 };
-threads.loading = function () {
-  threads._data.visible = [];
-  threads.setItems([format.placehold()]);
-};
-threads.wipe = function () {
-  threads._data.visible = [];
-  threads.setItems([DEFAULT_CONTENT]);
-};
 
 async function display() {
+  threads._data.fetchingMore = false;
   const displayable = State.threads();
   if (!displayable) {
-    threads.wipe();
+    threads.setItems([DEFAULT_CONTENT]);
+    threads.selected = undefined;
     threads.screen.render();
     return;
   }
 
-  threads._data.visible = displayable;
-
-  if (!displayable.length) {
-    threads.setContent(format.placehold('no threads, yet'));
+  if (!displayable.threads.length) {
+    threads.setContent(
+      format.placehold(displayable.loading ? 'loading' : 'no threads, yet')
+    );
   } else {
+    const previouslySelected = threads.selected;
+    threads._data.visible = displayable.threads;
     const formatted = [];
-    // eslint-disable-next-line no-unused-vars
-    for (let thread of displayable) {
+    for (let thread of displayable.threads) {
       formatted.push(await format.thread(thread));
     }
     threads.setItems(formatted);
-    threads.select(formatted.length - 1);
+    if (!previouslySelected) {
+      threads.select(formatted.length - 1);
+    }
   }
   threads.screen.render();
 }
 
 async function up() {
+  if (threads._data.fetchingMore && threads.selected === 1) {
+    return;
+  }
+
   if (threads.selected === 0 && !threads._data.searchPreview) {
-    const origLen = threads._data.threads.length;
-    threads.unshiftItem(format.placehold());
+    if (!State.chat().haMoreThreads) {
+      return;
+    }
+
+    threads._data.fetchingMore = true;
+    threads.unshiftItem(format.placehold('loading more'));
+    threads.select(1);
     threads.screen.render();
 
-    threads._data.threads = await Chat.moreThreads(threads._data.chat);
-    await display(false);
-    // highlight the oldest most-recently-loaded thread
-    threads.select(threads._data.threads.length - origLen - 1);
-    threads.screen.render();
+    EE.emit('threads.fetchMore');
   } else {
     threads.up();
     threads.screen.render();
@@ -110,16 +119,13 @@ threads.key('enter', () => {
   // if we're previewing, we cannot "select" a thread
   // but we can still nagivate messages
   if (!threads._data.searchPreview) {
-    threads.style.item = COLORS_INACTIVE_ITEM;
-    threads.style.selected = COLORS_INACTIVE_SELECTED;
     EE.emit('threads.select', threads.thread());
   } else {
     EE.emit('search.select', threads._data.chat);
   }
 });
 threads.key(['escape', 'q'], () => {
-  threads.style.item = COLORS_INACTIVE_ITEM;
-  threads.style.selected = COLORS_INACTIVE_SELECTED;
+  threads.render();
   EE.emit('threads.blur');
 });
 
@@ -138,29 +144,21 @@ threads.on('focus', () => {
   threads.screen.render();
 });
 threads.on('blur', () => {
-  if (threads._data.chat) {
-    threads.style.item = COLORS_INACTIVE_ITEM;
-    threads.style.selected = COLORS_INACTIVE_SELECTED;
-    threads.screen.render();
-  }
+  threads.style.item = COLORS_INACTIVE_ITEM;
+  threads.style.selected = COLORS_INACTIVE_SELECTED;
+  threads.screen.render();
 });
-threads.on('select item', () => {
-  if (threads._data.visible.length) {
-    EE.emit('threads.preview', threads.thread());
-  }
-});
-
 /**
  * External Events
  */
-EE.on('threads.activate', function () {
-  threads.focus();
-  if (!State.threads()) {
-    threads.loading();
+EE.on('state.chats.loading', display);
+EE.on('state.threads.updated', () => {
+  const c = State.chat();
+  if (c && c.isThreaded && !State.thread()) {
+    threads.focus();
   }
-  threads.screen.render();
+  display();
 });
-EE.on('threads.update', display);
 
 module.exports = {
   threads,

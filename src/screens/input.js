@@ -51,7 +51,7 @@ input.key('C-d', () => process.exit(0));
 
 input.on('focus', () => {
   const chat = State.chat();
-  // if (chat.isDm) {
+  // if (!chat.isThreaded) {
   //   input.setLabel(`Input (history: ${history() ? 'on' : 'off'})`);
   // }
 
@@ -65,11 +65,13 @@ input.on('focus', () => {
           // sendChatMessage(value, chat, history());
           // TODO figure out where in the protocol is history stored
           sendChatMessage(value, chat);
-        } else if (chat.threaded) {
+        } else if (chat.isThreaded) {
           sendThreadMessage(value, State.thread());
         } else {
           createThread(value, chat);
         }
+
+        EE.emit('messages.sent');
       }
 
       // input gets a little assume-y on submit
@@ -87,9 +89,12 @@ input.on('blur', () => {
   input.setLabel(`Input`);
 });
 
-EE.on('input.focus', () => {
-  input.focus();
-  input.screen.render();
+EE.on('state.messages.updated', () => {
+  const c = State.chat();
+  if (c && (c.isDm || !c.isThreaded || State.thread())) {
+    input.focus();
+    input.screen.render();
+  }
 });
 
 module.exports = {

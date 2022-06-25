@@ -211,4 +211,5 @@ module.exports = {
   fetchAvailableChats,
   fetchThreads,
   fetchMessages,
+  moreThreads,
 };
