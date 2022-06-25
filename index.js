@@ -11,6 +11,7 @@ Usage:
   gln [options]
   gln leave [--auth]
   gln run [options] <req>
+  gln func
 
 Options:
   -h --help       Show This Message
@@ -22,7 +23,16 @@ const opts = docopt(doc);
 auth.init(opts).then(() => {
   const events = require('./src/lib/api/events');
 
-  if (opts['--events']) {
+  if (opts.func) {
+    // const getAvailableRooms = require('./src/lib/api/get-available-rooms');
+    // const getChats = require('./src/lib/api/get-chats');
+    const getSpaceDetails = require('./src/lib/api/get-space-details');
+    const unpack = require('./src/lib/api/unpack');
+
+    getSpaceDetails({ uri: 'space/AAAAsCC42fA', id: 'AAAAsCC42fA' }).then(d => {
+      console.log(JSON.stringify(unpack.chat(d), null, 2));
+    });
+  } else if (opts['--events']) {
     events();
     EE.on('events.*', evt => {
       console.log(JSON.stringify(evt, null, 2));

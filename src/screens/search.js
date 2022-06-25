@@ -27,6 +27,11 @@ const input = blessed.textbox({
   style: {
     fg: 'white',
   },
+  cursor: {
+    artificial: true,
+    shape: 'underline',
+    blink: true,
+  },
 });
 const results = blessed.list({
   top: '10%',
@@ -44,7 +49,6 @@ const results = blessed.list({
 search.append(input);
 search.append(results);
 search._data = {};
-results._data = {};
 input._data = {};
 
 function selected() {
@@ -52,6 +56,10 @@ function selected() {
 }
 
 function filterResults() {
+  if (!search._data.available) {
+    return;
+  }
+
   if (input._data.value) {
     const by = input._data.value.toLowerCase();
     search._data.visible = search._data.available.filter(r =>
@@ -64,16 +72,13 @@ function filterResults() {
 }
 
 function display() {
-  results.setItems(search._data.visible.map(format.availableRoom));
+  const s = State.search();
+  if (s.loading) {
+    results.setItems([format.placehold()]);
+  } else {
+    results.setItems(search._data.visible.map(format.availableRoom));
+  }
   results.select(0);
-  search.screen.render();
-}
-
-function blur() {
-  search._data = {};
-  results._data = {};
-  input._data = {};
-  search.hide();
   search.screen.render();
 }
 
@@ -93,13 +98,18 @@ input.on('keypress', async (ch, key) => {
       return;
     case 'right':
     case 'C-p':
-      return EE.emit('search.preview', selected());
+      if (State.search().mode === 'local') {
+        EE.emit('search.select', selected());
+      } else {
+        EE.emit('search.preview', selected());
+      }
+      return;
     case 'enter':
       EE.emit('search.select', selected());
-      return blur();
+      return;
     case 'escape':
       EE.emit('search.close');
-      return blur();
+      return;
     // these listeners need to be duplicated from screen
     // as input captures keys and doesn't bubble them
     case 'C-d':
@@ -119,24 +129,36 @@ input.on('keypress', async (ch, key) => {
   filterResults();
 });
 
-EE.on('search.activate', () => {
-  input._data = { value: '' };
-  input.setValue('');
+EE.on('threads.blur', () => {
+  if (State.search()) {
+    input.focus();
+  }
+});
 
-  search.show();
-  input.focus();
-  results.setItems([format.placehold()]);
-  search.screen.render();
+EE.on('state.search.updated', () => {
+  const s = State.search();
+  if (s) {
+    // we're bootstrapping (i.e. not regaining focus from a preview)
+    if (!s.loading) {
+      input._data = { value: '' };
+      search._data.available = s.available;
+      search._data.visible = s.available;
+      input.setValue('');
+    }
+
+    if (!search.visible) {
+      search.show();
+      input.focus();
+    }
+
+    display();
+  } else if (search._data.available) {
+    search._data = {};
+    input._data = {};
+    search.hide();
+    search.screen.render();
+  }
 });
-EE.on('search.reactivate', () => {
-  input.focus();
-});
-EE.on('search.bootstrap', () => {
-  search._data.available = State.chats();
-  search._data.visible = State.chats();
-  display();
-});
-EE.on('search.update', display);
 
 module.exports = {
   search,

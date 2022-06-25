@@ -87,7 +87,7 @@ function roomUsers(c) {
 
 function chat(c) {
   return {
-    // _raw: c,
+    _raw: c,
     ...roomMeta(c[0]),
     isUnread: c[6],
     isGroup: !!c[55],
@@ -460,6 +460,7 @@ function _mark_read_room(obj) {
 
 function availableRooms(rooms) {
   return rooms.map(room => ({
+    _raw: room,
     ...roomMeta(room[0]),
     displayName: room[1],
     normalizedName: room[1].toLowerCase(),
@@ -472,6 +473,7 @@ function availableRooms(rooms) {
 
 module.exports = {
   chats,
+  chat,
   thread,
   user,
   message,

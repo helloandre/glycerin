@@ -36,7 +36,7 @@ function _fetchChats() {
 function _fetchThreads(chat, tsp) {
   _chats[chat.uri].loading = true;
 
-  Chat.fetchThreads(chat, tsp).then(ts => {
+  return Chat.fetchThreads(chat, tsp).then(ts => {
     _chats[chat.uri].loading = false;
     _chats[chat.uri].hasMoreThreads = ts.hasMore;
     _threads[chat.uri] = {};
@@ -45,28 +45,27 @@ function _fetchThreads(chat, tsp) {
     });
     // for when we need to fetch more
     _chats[chat.uri].moreTimestamp = timestamp.more(ts.threads[0].mostRecentAt);
-
-    if (chat.isThreaded) {
-      EE.emit('state.threads.updated');
-    } else {
-      EE.emit('state.messages.updated');
-    }
   });
 }
 
-function _selectChat(chat) {
+async function _selectChat(chat) {
+  if (!_chats[chat.uri]) {
+    await Chat.fetchDetails(chat).then(deets => {
+      _chats[chat.uri] = deets;
+    });
+  }
+
   _active.chat = chat.uri;
   _chats[chat.uri].loading = true;
   EE.emit('state.chats.loading');
 
   if (chat.isDm) {
-    Chat.fetchMessages(chat, timestamp.now()).then(msgs => {
+    return Chat.fetchMessages(chat, timestamp.now()).then(msgs => {
       _chats[chat.uri].loading = false;
       _chats[chat.uri].messages = msgs;
-      EE.emit('state.messages.updated');
     });
   } else {
-    _fetchThreads(chat, timestamp.now());
+    return _fetchThreads(chat, timestamp.now());
   }
 }
 
@@ -114,48 +113,62 @@ EE.on('screen.ready', () => {
 });
 
 EE.on('search.local', () => {
+  _search.available = chats();
   _active.search = true;
   _search.mode = 'local';
-  EE.emit('search.activate');
-  EE.emit('search.bootstrap');
+
+  EE.emit('state.search.updated');
 });
 EE.on('search.remote', () => {
   _active.search = true;
   _search.mode = 'remote';
-  EE.emit('search.activate');
+  _search.loading = true;
+  EE.emit('state.search.updated');
 
   Chat.fetchAvailableChats().then(available => {
     _search.available = available;
-    EE.emit('search.bootstrap');
+    _search.loading = false;
+    EE.emit('state.search.updated');
   });
 });
 EE.on('search.preview', chat => {
-  _selectChat(chat);
+  _selectChat(chat).then(() => {
+    EE.emit('state.threads.updated');
+  });
 });
-EE.on('search.close', chat => {
+EE.on('search.close', () => {
   _active.search = false;
-  // come from somewhere else
-  EE.emit('chats.activate');
+  _active.chat = false;
+  _active.thread = false;
+  EE.emit('state.search.updated');
+  EE.emit('state.chats.updated');
 });
 EE.on('search.select', chat => {
   _active.search = false;
-  EE.emit('working.activate');
 
-  if (_search.mode === 'local') {
-    _selectChat(chat);
-  } else {
-    Chat.join(chat).then(() => {
-      EE.emit('working.deactivate');
-      _selectChat(chat);
-    });
-  }
+  const p =
+    _search.mode === 'local'
+      ? _selectChat(chat)
+      : Chat.join(chat).then(() => _selectChat(chat));
+
+  p.then(() => {
+    EE.emit('state.search.updated');
+    EE.emit('state.chats.updated');
+    EE.emit('state.threads.updated');
+  });
 });
 EE.on('chats.select', chat => {
-  _selectChat(chat);
+  _selectChat(chat).then(() => {
+    EE.emit('state.chats.updated');
+    EE.emit('state.messages.updated');
+    EE.emit('state.threads.updated');
+  });
 });
-EE.on('threads.preview', t => {
-  _active.thread = t.id;
-  EE.emit('messages.update');
+EE.on('chats.leave', chat => {
+  Chat.leave(chat).then(() => {
+    delete _chats[chat.uri];
+    EE.emit('state.chats.updated');
+  });
 });
 EE.on('threads.select', t => {
   _active.thread = t.id;
@@ -165,18 +178,19 @@ EE.on('threads.blur', () => {
   _active.thread = false;
   _active.chat = false;
 
-  if (_active.search) {
-    EE.emit('search.reactivate');
-  } else {
-    EE.emit('chats.activate');
-  }
-
+  EE.emit('state.search.updated');
   EE.emit('state.chats.updated');
   EE.emit('state.threads.updated');
 });
 EE.on('threads.fetchMore', () => {
   const c = chat();
-  _fetchThreads(c, c.moreTimestamp);
+  _fetchThreads(c, c.moreTimestamp).then(() => {
+    if (c.isThreaded) {
+      EE.emit('state.threads.updated');
+    } else {
+      EE.emit('state.messages.updated');
+    }
+  });
 });
 EE.on('input.blur', () => {
   const c = chat();
@@ -357,10 +371,15 @@ function messages() {
   }
 }
 
+function search() {
+  return _active.search && _search;
+}
+
 module.exports = {
   chat,
   chats,
   thread,
   threads,
   messages,
+  search,
 };

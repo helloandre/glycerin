@@ -110,23 +110,19 @@ function display() {
 
   chats._data.visible = State.chats();
   chats.setItems(chats._data.visible.map(format.chat));
+
+  const c = State.chat();
+  if (c) {
+    const idx = chats._data.visible.findIndex(v => v.uri === c.uri);
+    chats.select(idx);
+  }
   chats.screen.render();
 }
 
 function leave(chat) {
   return confirm.ask(`Leave ${chat.displayName}?`).then(async ans => {
     if (ans) {
-      working.show();
-      const sel = chats.selected;
-      await Chat.leave(chat);
-      const type = typeOf(chat);
-      chats._data.chats[type] = chats._data.chats[type].filter(
-        c => c.uri !== chat.uri
-      );
-
-      display();
-      chats.select(sel);
-      working.hide();
+      EE.emit('chats.leave', chats.chat());
     }
   });
 }

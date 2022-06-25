@@ -70,8 +70,6 @@ input.on('focus', () => {
         } else {
           createThread(value, chat);
         }
-
-        EE.emit('messages.sent');
       }
 
       // input gets a little assume-y on submit

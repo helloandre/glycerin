@@ -17,6 +17,21 @@ function fromEvents(contents) {
 }
 
 /**
+ * Batch Events are "simpler"
+ *
+ * @param {String} contents
+ */
+function fromBatchExecute(contents) {
+  // first line is garbage
+  // eslint-disable-next-line no-unused-vars
+  const [_, rest] = readUntil(contents, '\n');
+  // yeah, nested strings of json
+  return JSON.parse(rest.trimLeft())
+    .filter(req => req[0] === 'wrb.fr')
+    .map(req => JSON.parse(req[2]));
+}
+
+/**
  * parse a response from /data
  * structure is:
  *    <number> - length of response
@@ -54,4 +69,5 @@ function readUntil(str, until) {
 module.exports = {
   fromResponse,
   fromEvents,
+  fromBatchExecute,
 };

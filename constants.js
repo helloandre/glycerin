@@ -2,6 +2,8 @@ const URL_DATA = 'https://chat.google.com/_/DynamiteWebUi/data';
 const URL_MUTATE = 'https://chat.google.com/_/DynamiteWebUi/mutate';
 const URL_EVENTS = 'https://chat.google.com/u/0/webchannel/events';
 const URL_REGISTER = 'https://chat.google.com/u/0/webchannel/register';
+const URL_BATCHEXECUTE =
+  'https://chat.google.com/u/0/_/DynamiteWebUi/data/batchexecute';
 const DEFAULT_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   'User-Agent': 'glycerin-tui/0.0.1',
@@ -29,6 +31,7 @@ const ACTIONID_HIDE_CHAT = '145597873'; // hide a DM
 const ACTIONID_MARK_THREAD_READ = '120296768';
 const ACTIONID_MARK_DM_READ = '163732318';
 // const ACTIONID_CHAT_MEMBERS = '115617454'; // [[[115617454,[{"115617454":[["space/AAAAnDXy3Ws","AAAAnDXy3Ws",2],true]}],null,null,0]]]
+const RPCID_GET_SPACE_DETAILS = 'W9QdYe';
 
 const COLORS_ACTIVE_ITEM = {
   fg: 'white',
@@ -50,6 +53,7 @@ module.exports = {
   URL_MUTATE,
   URL_EVENTS,
   URL_REGISTER,
+  URL_BATCHEXECUTE,
   DEFAULT_HEADERS,
   ACTIONID_GET_CHATS,
   ACTIONID_GET_CHAT_MESSAGES,
@@ -69,4 +73,5 @@ module.exports = {
   COLORS_ACTIVE_SELECTED,
   COLORS_INACTIVE_ITEM,
   COLORS_INACTIVE_SELECTED,
+  RPCID_GET_SPACE_DETAILS,
 };

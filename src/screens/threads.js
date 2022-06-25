@@ -21,7 +21,7 @@ const threads = blessed.list({
     type: 'line',
   },
   // do not set a default style
-  content: DEFAULT_CONTENT,
+  items: [DEFAULT_CONTENT],
   scrollable: true,
   scrollbar: {
     style: {
@@ -125,7 +125,6 @@ threads.key('enter', () => {
   }
 });
 threads.key(['escape', 'q'], () => {
-  threads.render();
   EE.emit('threads.blur');
 });
 

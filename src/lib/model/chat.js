@@ -5,6 +5,7 @@ const getChatThreads = require('../api/get-chat-threads');
 const getChatMessages = require('../api/get-chat-messages');
 const getThreadMessages = require('../api/get-thread-messages');
 const setRoomMembership = require('../api/set-room-membership');
+const getSpaceDetails = require('../api/get-space-details');
 const markReadAPI = require('../api/mark-read');
 const unpack = require('../api/unpack');
 const User = require('./user');
@@ -19,6 +20,10 @@ function fetchChats() {
 
 function fetchAvailableChats() {
   return getAvailableRooms().then(unpack.availableRooms);
+}
+
+function fetchDetails(c) {
+  return getSpaceDetails(c).then(unpack.chat);
 }
 
 /**
@@ -208,6 +213,7 @@ module.exports = {
   join,
   leave,
   fetchChats,
+  fetchDetails,
   fetchAvailableChats,
   fetchThreads,
   fetchMessages,
