@@ -24,7 +24,8 @@ function _thread(t) {
     mostRecentAt: t[1],
     mostRecentReadAt: t[2], // can be 0 if none read
     messages,
-    isUnread: messages.filter(m => m.isUnread).length,
+    isUnread: t[1] != t[2],
+    // isUnread: messages.filter(m => m.isUnread).length,
     unfetched: t[6],
     total: t[4].length + t[6],
     // t[12] is some kind of timestamp
@@ -38,7 +39,7 @@ function _thread(t) {
   };
 }
 
-function message(msg) {
+function message(msg, lastReadAt) {
   return {
     id: msg[1],
     user: user(msg[4], msg[2]),
@@ -50,7 +51,8 @@ function message(msg) {
       parts: msg[9],
     },
     createdAt: msg[11],
-    isUnread: msg[14],
+    isUnread: msg[15],
+    // isUnread: msg[14], // incorrect.
     // in int format
     // createdAt: msg[16]
     // threadish: msg[17] seems to be thread+room again...

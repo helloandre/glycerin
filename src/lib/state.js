@@ -39,7 +39,9 @@ function _fetchThreads(chat, tsp) {
   return Chat.fetchThreads(chat, tsp).then(ts => {
     _chats[chat.uri].loading = false;
     _chats[chat.uri].hasMoreThreads = ts.hasMore;
-    _threads[chat.uri] = {};
+    if (!_threads[chat.uri]) {
+      _threads[chat.uri] = {};
+    }
     ts.threads.forEach(t => {
       _threads[chat.uri][t.id] = t;
     });
@@ -325,7 +327,8 @@ function threads() {
     loading: false,
     threads: Object.entries(_threads[_active.chat])
       .map(([_, val]) => val)
-      .sort((a, b) => (a.mostRecentAt > b.mostRecentAt ? 1 : -1)),
+      .sort((a, b) => (a.mostRecentAt > b.mostRecentAt ? 1 : -1))
+      .filter(t => !t.isMembershipUpdate),
   };
 }
 

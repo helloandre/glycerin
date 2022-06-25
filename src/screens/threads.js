@@ -21,7 +21,7 @@ const threads = blessed.list({
     type: 'line',
   },
   // do not set a default style
-  items: [DEFAULT_CONTENT],
+  content: DEFAULT_CONTENT,
   scrollable: true,
   scrollbar: {
     style: {
@@ -35,7 +35,6 @@ const threads = blessed.list({
   // vi: true,
 });
 threads._data = {
-  chat: false,
   visible: [],
 };
 threads.thread = function () {
@@ -43,7 +42,6 @@ threads.thread = function () {
 };
 
 async function display() {
-  threads._data.fetchingMore = false;
   const displayable = State.threads();
   if (!displayable) {
     threads.setItems([DEFAULT_CONTENT]);
@@ -57,33 +55,50 @@ async function display() {
       format.placehold(displayable.loading ? 'loading' : 'no threads, yet')
     );
   } else {
-    const previouslySelected = threads.selected;
     threads._data.visible = displayable.threads;
     const formatted = [];
     for (let thread of displayable.threads) {
       formatted.push(await format.thread(thread));
     }
     threads.setItems(formatted);
-    if (!previouslySelected) {
+    if (threads._data.lastIdBeforeFetching) {
+      const idx = threads._data.visible.findIndex(
+        t => t.id === threads._data.lastIdBeforeFetching
+      );
+      threads._data.lastIdBeforeFetching = false;
+      // select the oldest unseen thread
+      threads.select(idx - 1);
+    } else if (!threads.selected && !threads._data.fetchingMore) {
       threads.select(formatted.length - 1);
     }
   }
+  threads._data.fetchingMore = false;
   threads.screen.render();
 }
 
-async function up() {
-  if (threads._data.fetchingMore && threads.selected === 1) {
+/**
+ * Keybindings
+ */
+
+threads.key('n', () => {
+  if (!State.search()) {
+    EE.emit('threads.new', threads._data.chat);
+  }
+});
+threads.key(['k', 'up'], () => {
+  if (threads._data.fetchingMore) {
     return;
   }
 
-  if (threads.selected === 0 && !threads._data.searchPreview) {
-    if (!State.chat().haMoreThreads) {
+  if (threads.selected === 0) {
+    if (!State.chat().hasMoreThreads) {
       return;
     }
 
     threads._data.fetchingMore = true;
+    threads._data.lastIdBeforeFetching = threads.thread().id;
     threads.unshiftItem(format.placehold('loading more'));
-    threads.select(1);
+    threads.select(0);
     threads.screen.render();
 
     EE.emit('threads.fetchMore');
@@ -91,19 +106,11 @@ async function up() {
     threads.up();
     threads.screen.render();
   }
-}
-
-/**
- * Keybindings
- */
-
-threads.key('C-t n', () => {
-  if (!threads._data.searchPreview) {
-    EE.emit('threads.new', threads._data.chat);
-  }
 });
-threads.key(['k', 'up'], up);
 threads.key(['j', 'down'], () => {
+  if (threads._data.fetchingMore) {
+    return;
+  }
   threads.down();
   threads.screen.render();
 });
@@ -116,13 +123,7 @@ threads.key(['S-g'], () => {
   threads.screen.render();
 });
 threads.key('enter', () => {
-  // if we're previewing, we cannot "select" a thread
-  // but we can still nagivate messages
-  if (!threads._data.searchPreview) {
-    EE.emit('threads.select', threads.thread());
-  } else {
-    EE.emit('search.select', threads._data.chat);
-  }
+  EE.emit('threads.select', threads.thread());
 });
 threads.key(['escape', 'q'], () => {
   EE.emit('threads.blur');

@@ -26,12 +26,21 @@ auth.init(opts).then(() => {
   if (opts.func) {
     // const getAvailableRooms = require('./src/lib/api/get-available-rooms');
     // const getChats = require('./src/lib/api/get-chats');
-    const getSpaceDetails = require('./src/lib/api/get-space-details');
+    // const getSpaceDetails = require('./src/lib/api/get-space-details');
+    const Chat = require('./src/lib/model/chat');
     const unpack = require('./src/lib/api/unpack');
 
-    getSpaceDetails({ uri: 'space/AAAAsCC42fA', id: 'AAAAsCC42fA' }).then(d => {
-      console.log(JSON.stringify(unpack.chat(d), null, 2));
-    });
+    // getSpaceDetails({ uri: 'space/AAAAsCC42fA', id: 'AAAAsCC42fA' }).then(
+    //   d => {
+    //     console.log(JSON.stringify(unpack.threads(d), null, 2));
+    //   }
+    // );
+    Chat.fetchThreads({ uri: 'space/AAAAzf7rN-U', id: 'AAAAzf7rN-U' }).then(
+      d => {
+        // console.log(JSON.stringify(d, null, 2));
+        console.log(d);
+      }
+    );
   } else if (opts['--events']) {
     events();
     EE.on('events.*', evt => {

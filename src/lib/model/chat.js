@@ -81,7 +81,7 @@ function fetchThreads(chat, before, preview = false) {
     throw new Error('threads called on a dm');
   }
 
-  return getChatThreads(chat, before, preview).then(ts => {
+  return getChatThreads(chat, before || timestamp.now(), preview).then(ts => {
     const unpacked = unpack.thread(ts);
     // we have to let the users cache know about all the users we just saw
     // so that when we go to display them we fetch all at once
