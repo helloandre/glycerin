@@ -61,14 +61,18 @@ async function display() {
       formatted.push(await format.thread(thread));
     }
     threads.setItems(formatted);
-    if (threads._data.lastIdBeforeFetching) {
+
+    const t = State.thread();
+    if (t) {
+      threads.select(threads._data.visible.findIndex(v => v.id === t.id));
+    } else if (threads._data.lastIdBeforeFetching) {
       const idx = threads._data.visible.findIndex(
         t => t.id === threads._data.lastIdBeforeFetching
       );
       threads._data.lastIdBeforeFetching = false;
       // select the oldest unseen thread
       threads.select(idx - 1);
-    } else if (!threads.selected && !threads._data.fetchingMore) {
+    } else if (!threads._data.fetchingMore) {
       threads.select(formatted.length - 1);
     }
   }

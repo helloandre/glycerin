@@ -19,16 +19,13 @@ const _search = {
 };
 let _unread = [];
 
-function _refresh() {
-  EE.emit('chats.update');
-  EE.emit('threads.update');
-  EE.emit('messages.update');
-}
-
 function _fetchChats() {
   return Chat.fetchChats().then(cs => {
     cs.forEach(chat => {
       _chats[chat.uri] = chat;
+      if (chat.isUnread) {
+        markUnread(chat);
+      }
     });
   });
 }
@@ -65,41 +62,71 @@ async function _selectChat(chat) {
     return Chat.fetchMessages(chat, timestamp.now()).then(msgs => {
       _chats[chat.uri].loading = false;
       _chats[chat.uri].messages = msgs;
+      markRead();
     });
   } else {
-    return _fetchThreads(chat, timestamp.now());
+    return _fetchThreads(chat, timestamp.now()).then(markRead);
   }
 }
 
-function markUnread(obj) {
-  // put this object at the front of unread
-  _unread = [
-    {
-      id: obj.id,
-      uri: obj.uri || obj.room.uri,
-      isDm: !!obj.isDm,
-      at: parseInt(obj.mostRecentAt, 10),
-    },
-  ]
-    // remove any existing instances so we don't try to come back to it later
-    .concat(_unread.filter(u => u.id !== obj.id || u.uri !== obj.uri))
-    .sort((a, b) => (a.at > b.at ? -1 : 1));
-}
+/**
+ * let the server know we've seen this chat and/or thread
+ */
+function markRead() {
+  const c = chat();
+  if (!c) {
+    return;
+  }
 
-function markRead(obj) {
-  const beforeLen = unread.length;
-  unread = unread.filter(o => o.id !== obj.id || o.uri !== obj.uri);
-  // if it's not in our unread queue, nothing to do here...
-  if (beforeLen !== unread.length) {
-    // fire and forget
-    Chat.markRead(obj);
+  _chats[c.uri].isUnread = false;
+  const idx = _unread.findIndex(u => u.uri === c.uri);
+  // this chat is not unread, bail
+  if (idx === -1) {
+    return;
+  }
 
-    if (obj.isDm) {
-      _chats[obj.uri].isUnread = false;
-    } else {
-      _threads[obj.uri][obj.id].isUnread = false;
+  if (c.isDm) {
+    Chat.markRead(c);
+  } else {
+    const t = thread();
+    // we don't have a thread selected yet, nothing to "read"
+    if (!t) {
+      return;
+    }
+    _threads[c.uri][t.id].isUnread = false;
+    Chat.markRead(t);
+
+    // if there's any other threads in this chat that are unread
+    // put this chat back into unread at the proper place
+    const unreadThreads = threads().threads.filter(t => t.isUnread);
+    if (unreadThreads.length > 1) {
+      // TODO this is the wrong behavior for sorting by .mostRecentAt
+      // we need a .mostRecentUnreadAt
+      markUnread(c, unreadThreads[1].mostRecentAt);
     }
   }
+
+  // TODO this is a naive removement of the first instance of chat
+  // from _unread, but that is probably the incorrect behavior
+  _unread.splice(idx, 1);
+}
+
+/**
+ * Something about this chat is unread
+ * we'll sort out exactly what when we render it
+ *
+ * @param {unpack.chat} chat
+ * @param {timestamp} mostRecentAt
+ */
+function markUnread(chat, mostRecentAt = false) {
+  _chats[chat.uri].isUnread = true;
+  if (mostRecentAt) {
+    _chats[chat.uri].mostRecentAt = mostRecentAt;
+  }
+
+  _unread.push(chat);
+  // TODO it might be more efficient to sort when we're looking or the next unread
+  _unread.sort((a, b) => (a.mostRecentAt > b.mostRecentAt ? -1 : 1));
 }
 
 /**
@@ -174,6 +201,8 @@ EE.on('chats.leave', chat => {
 });
 EE.on('threads.select', t => {
   _active.thread = t.id;
+  markRead();
+  EE.emit('state.threads.updated');
   EE.emit('state.messages.updated');
 });
 EE.on('threads.blur', () => {
@@ -196,6 +225,11 @@ EE.on('threads.fetchMore', () => {
 });
 EE.on('input.blur', () => {
   const c = chat();
+  // not sure how this is possible yet, but seen it once
+  if (!c) {
+    return;
+  }
+
   if (c.isDm || !c.isThreaded) {
     _active.thread = false;
     _active.chat = false;
@@ -223,71 +257,101 @@ EE.on('messages.expand', () => {
 });
 EE.on('unread.next', () => {
   if (_unread.length) {
-    const next = _unread.shift();
-    _active.chat = next.uri;
-    _active.thread = next.isDm ? next.id : false;
+    // TODO config to read from start or end of _unread
+    const next = _unread[0];
+    _selectChat(next).then(() => {
+      if (next.isThreaded) {
+        const ts = threads().threads;
+        const unreadThreads = ts.filter(t => t.isUnread);
+        // edge case while i was testing with two windows open:
+        // we might have a new message but no unread threads
+        // so assume the "newest" thread
+        if (!unreadThreads.length) {
+          _active.thread = ts.pop().id;
+        } else {
+          _active.thread = unreadThreads[0].id;
+        }
+        markRead(next);
 
-    _refresh();
+        // if this chat has a different thread that is also unread
+        // put it back into the correct place in _unread
+        if (unreadThreads.length > 1) {
+          markUnread(next, unreadThreads[1].mostRecentAt);
+        }
+      }
+
+      EE.emit('state.chats.updated');
+      EE.emit('state.threads.updated');
+      EE.emit('state.messages.updated');
+    });
   }
 });
 
 EE.once('state.fetched', () => {
   // new message
   EE.on('events.6', async evt => {
-    const chat = _chats[evt.room.uri];
-    if (!chat) {
+    const c = _chats[evt.room.uri];
+    if (!c) {
       // if we don't have this room, bail bail bail
       // and let the "redraw the world" process take over
       // which... i mean... we could always do, but this is
       // an expensive call so we should try not to do it a lot
       await _fetchChats();
+      // no need to mark anythign here, _fetchChats handles that
     } else {
-      // let the User be preloaded if we haven't seen it yet
-      evt.user.room = evt.room;
-      User.prefetch(evt.user);
+      if (c.isDm) {
+        if (c.messages) {
+          c.messages.push(evt);
+        }
 
-      const msg = {
-        ...evt,
-        isUnread: true,
-      };
-
-      chat.isUnread = true;
-
-      if (chat.isDm) {
-        chat.messages = (c.messages || []).concat(msg);
-
-        _chats[chat.uri] = chat;
-        // markUnread(chat);
+        if (c.uri !== _active.chat) {
+          markUnread(c, evt.mostRecentAt);
+        } else {
+          _chats[c.uri].mostRecentAt = evt.mostRecentAt;
+        }
       } else {
-        if (!_threads[chat.uri]) {
-          _threads[chat.uri] = {};
+        if (_threads[c.uri]) {
+          if (c.isThreaded) {
+            if (!_threads[c.uri][evt.thread.id]) {
+              // if this is a new thread, or someone resurrecting an old one
+              // take the slightly nuclear option
+              await _fetchThreads(c);
+            } else {
+              // let the User be preloaded if we haven't seen it yet
+              evt.user.room = evt.room;
+              User.prefetch(evt.user);
+
+              _threads[c.uri][evt.thread.id] = {
+                ..._threads[c.uri][evt.thread.id],
+                messages: _threads[c.uri][evt.thread.id].messages.concat(evt),
+                mostRecentAt: evt.mostRecentAt,
+                isUnread: _active.thread != evt.thread.id,
+                total: _threads[c.uri][evt.thread.id].total + 1,
+              };
+            }
+          } else {
+            // let the User be preloaded if we haven't seen it yet
+            evt.user.room = evt.room;
+            User.prefetch(evt.user);
+
+            // unthreaded spaces look like threads but each thread only has one message
+            _threads[c.uri][evt.thread.id] = {
+              messages: [evt],
+              mostRecentAt: evt.mostRecentAt,
+              isUnread: _active.thread != evt.thread.id,
+            };
+          }
         }
 
-        if (!_threads[chat.uri][evt.thread.id]) {
-          _threads[chat.uri][evt.thread.id] = {
-            id: evt.thread.id,
-            room: {
-              uri: chat.uri,
-              id: chat.id,
-              displayName: chat.displayName,
-            },
-            messages: [],
-            total: 0,
-          };
+        if (c.isThreaded && evt.thread && evt.thread.id !== _active.thread) {
+          markUnread(c, evt.mostRecentAt);
+        } else {
+          _chats[c.uri].mostRecentAt = evt.mostRecentAt;
         }
-
-        _threads[chat.uri][evt.thread.id] = {
-          ..._threads[chat.uri][evt.thread.id],
-          messages: _threads[chat.uri][evt.thread.id].messages.concat(msg),
-          mostRecentAt: timestamp.now(),
-          total: _threads[chat.uri][evt.thread.id].total + 1,
-          isUnread: true,
-        };
-
-        // markUnread(_threads[chat.uri][evt.thread.id]);
       }
     }
 
+    // TODO i wonder if this will cause issues when in the middle of typing a message?
     EE.emit('state.chats.updated');
     EE.emit('state.threads.updated');
     EE.emit('state.messages.updated');
@@ -333,7 +397,10 @@ function threads() {
 }
 
 function thread() {
-  return _active.chat && _active.thread
+  return _active.chat &&
+    _active.thread &&
+    _threads[_active.chat] &&
+    _threads[_active.chat][_active.thread]
     ? _threads[_active.chat][_active.thread]
     : false;
 }

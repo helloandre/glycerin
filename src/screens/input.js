@@ -48,6 +48,10 @@ input.key('C-e', () => EE.emit('messages.expand'));
 // input.key('C-f f', () => EE.emit('search.remote'));
 input.key('C-n', async () => EE.emit('unread.next'));
 input.key('C-d', () => process.exit(0));
+input.key('escape', () => {
+  EE.emit('input.blur', input._data.from);
+  input._data = false;
+});
 
 input.on('focus', () => {
   const chat = State.chat();
@@ -75,9 +79,6 @@ input.on('focus', () => {
       // input gets a little assume-y on submit
       // so let's give ourselves focus again
       input.focus();
-    } else {
-      EE.emit('input.blur', input._data.from);
-      input._data = false;
     }
 
     input.screen.render();

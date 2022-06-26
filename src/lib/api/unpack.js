@@ -24,7 +24,7 @@ function _thread(t) {
     mostRecentAt: t[1],
     mostRecentReadAt: t[2], // can be 0 if none read
     messages,
-    isUnread: t[1] != t[2],
+    isUnread: t[1] > t[2],
     // isUnread: messages.filter(m => m.isUnread).length,
     unfetched: t[6],
     total: t[4].length + t[6],
@@ -91,7 +91,7 @@ function chat(c) {
   return {
     _raw: c,
     ...roomMeta(c[0]),
-    isUnread: c[6],
+    isUnread: c[8] > c[9],
     isGroup: !!c[55],
     isThreaded: c[26] === null,
     // 0 === all messages
