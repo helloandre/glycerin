@@ -245,13 +245,13 @@ EE.on('messages.expand', () => {
   const t = thread();
   if (t && t.unfetched > 0) {
     _threads[t.room.uri][t.id].loading = true;
-    EE.emit('messages.update');
+    EE.emit('state.messages.updated');
 
     Chat.fetchMessages(t, timestamp.now()).then(msgs => {
       _threads[t.room.uri][t.id].loading = false;
       _threads[t.room.uri][t.id].messages = msgs;
       _threads[t.room.uri][t.id].unfetched = thread().total - msgs.length;
-      EE.emit('messages.update');
+      EE.emit('state.messages.updated');
     });
   }
 });
