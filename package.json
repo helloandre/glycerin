@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "axios": "^0.21.1",
+    "axios": "^0.21.2",
     "chalk": "^4.1.2",
     "docopt": "^0.6.2",
     "lodash.get": "^4.4.2",
