@@ -1,4 +1,5 @@
 const moment = require('moment');
+const chalk = require('chalk');
 const User = require('./model/user');
 
 /**
@@ -28,9 +29,11 @@ async function thread({ isUnread, total, messages }) {
   const prefix = isUnread ? '*' : ' ';
   const affix = !isUnread && total > 99 ? '+' : ' ';
   const preview = await message(messages[0], true);
-  return `{grey-fg}${prefix}${Math.min(99, total)
-    .toString()
-    .padStart(2, ' ')}${affix}{/grey-fg} ${preview}`;
+  return (
+    chalk.grey(
+      `${prefix}${Math.min(99, total).toString().padStart(2)}${affix}`
+    ) + preview
+  );
 }
 
 /**
@@ -44,11 +47,12 @@ async function thread({ isUnread, total, messages }) {
  */
 async function message(msg, truncate = false) {
   const ts = moment(parseInt(msg.createdAt.substring(0, 13), 10));
-  const text = textFromMsg(msg.text);
+  const stamp = ts.format('YYYY-MM-DD hh:mma');
   const name = await User.name(msg.user);
+  const me = await User.whoami();
 
-  return `{grey-fg}${ts.format('YYYY-MM-DD hh:mma')}>{/grey-fg} ${name}: ${
-    truncate ? msg.text.raw.split('\n').shift() : text
+  return `${chalk.grey(stamp + '>')} ${chalk.underline(name)}: ${
+    truncate ? msg.text.raw.split('\n').shift() : textFromMsg(msg.text, me)
   }`;
 }
 
@@ -58,7 +62,7 @@ function placehold(str = 'loading') {
 
 function availableRoom(room) {
   const count = room.memberCount
-    ? ` {grey-fg}(${room.memberCount} members){/}`
+    ? chalk.grey(` (${room.memberCount} members)`)
     : '';
   return `${room.displayName}${count}`;
 }
@@ -72,27 +76,78 @@ function checkbox(item) {
  * @TODO figure out other kinds of things. potentially use msg.parts
  *
  * @param {unpack.message} msg
+ * @param {User} me
  */
-function textFromMsg(msg) {
-  if (msg.raw.length) {
-    return msg.raw;
-  }
+function textFromMsg(msg, me) {
+  const orig = msg.raw.length ? msg.raw : '';
+  let text = orig + '';
+  // if we insert text that is a different length than part
+  let offset = 0;
 
-  if (msg.links) {
-    switch (msg.links[0][0]) {
-      case 1:
-        return `<img> ${msg.links[0][6][6][2]}`;
-      case 19:
-        return `<history ${msg.links[0][16][0][0] === 1 ? 'on' : 'off'}>`;
-      // google meet link?
-      // messages that contain only a link to a google meet
-      // usually from the "add video meeting" button
-      case 11:
-        return `<meet> ${msg.links[0][11][0][2]}`;
+  if (msg.formatting) {
+    for (const f of msg.formatting) {
+      let part = orig.substring(f.indexStart, f.indexEnd);
+      let insert = part;
+      // 1 === link
+      // 6 === mention
+      // 8 === inlineblock text (see textType)
+      // 11 === google meet link
+      // 13 === image
+      switch (f.type) {
+        case 1:
+          if (part !== f.link.raw) {
+            insert = `(${part})[${chalk.cyan(f.link.raw)}]`;
+          } else {
+            insert = chalk.cyan(part);
+          }
+          break;
+        case 6:
+          insert =
+            me.id === f.mention.id
+              ? chalk.red(part)
+              : chalk.red('@') + part.substring(1);
+          break;
+        case 8:
+          // 5 == monospace text (inside `)
+          // 6 == `
+          // 7 == block text (inside ```)
+          switch (f.textType) {
+            case 5:
+              insert = chalk.bgGrey(part);
+              break;
+            case 6:
+              insert = '';
+              break;
+            case 7:
+              const parts = part.split('\n');
+              const longestLine = parts.reduce(
+                (max, line) => (line.length > max ? line.length : max),
+                0
+              );
+              insert = `\n${chalk.bgGrey(
+                parts.map(line => line.padEnd(longestLine)).join('\n')
+              )}\n`;
+              break;
+          }
+          break;
+        case 11:
+          insert = `${chalk.grey('<meet>:')} ${chalk.cyan(f.meet.link)}`;
+          break;
+        case 13:
+          insert = `${chalk.grey('<img>:')} ${f.image.title}`;
+          break;
+      }
+
+      text = _ins(text, f.indexStart + offset, f.indexEnd + offset, insert);
+      offset += insert.length - part.length;
     }
   }
 
-  return '<unknown msg>';
+  return text.length ? text : '<unknown msg>';
+}
+
+function _ins(text, start, end, content) {
+  return text.substring(0, start) + content + text.substring(end);
 }
 
 module.exports = {

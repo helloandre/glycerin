@@ -28,19 +28,24 @@ auth.init(opts).then(() => {
     // const getChats = require('./src/lib/api/get-chats');
     // const getSpaceDetails = require('./src/lib/api/get-space-details');
     const Chat = require('./src/lib/model/chat');
-    const unpack = require('./src/lib/api/unpack');
+    // const unpack = require('./src/lib/api/unpack');
+    const format = require('./src/lib/format');
 
     // getSpaceDetails({ uri: 'space/AAAAsCC42fA', id: 'AAAAsCC42fA' }).then(
     //   d => {
     //     console.log(JSON.stringify(unpack.threads(d), null, 2));
     //   }
     // );
-    Chat.fetchThreads({ uri: 'space/AAAAzf7rN-U', id: 'AAAAzf7rN-U' }).then(
-      d => {
-        // console.log(JSON.stringify(d, null, 2));
-        console.log(d);
-      }
-    );
+    //chat.google.com/room/AAAAoxNPLX8/T51Q_Qp8rZA
+    https: Chat.fetchThreads({
+      uri: 'space/AAAAsCC42fA',
+      id: 'AAAAsCC42fA',
+    }).then(d => {
+      Chat.fetchMessages(d.threads[4])
+        .then(m => Promise.all(m.map(x => format.message(x))))
+        .then(ms => ms.forEach(m => console.log(m)));
+      // console.log(d);
+    });
   } else if (opts['--events']) {
     events();
     EE.on('events.*', evt => {

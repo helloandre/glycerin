@@ -39,16 +39,17 @@ function _thread(t) {
   };
 }
 
-function message(msg, lastReadAt) {
+function message(msg) {
   return {
+    _raw: msg,
     id: msg[1],
     user: user(msg[4], msg[2]),
     text: {
       raw: msg[5],
       // msg[8] is some kind of metadata about mentions / urls
-      links: msg[8],
+      formatting: msg[8] ? msg[8].map(_msg_formatting) : null,
       // msg[9] is the parts of the message broken up into "regular text" and "links/mentions"
-      parts: msg[9],
+      // parts: msg[9],
     },
     createdAt: msg[11],
     isUnread: msg[15],
@@ -347,24 +348,7 @@ function _event_msg(msg) {
     },
     text: {
       raw: msg[9],
-      formatting: msg[10]
-        ? msg[10].map(fmt => ({
-            unknownValue: fmt[0],
-            rawIndex: fmt[1],
-            length: fmt[2],
-            // 5 == monospace text (inside `)
-            // 6 == `
-            // 7 == block text (inside ```)
-            type: fmt[7] ? fmt[7][0] : null,
-            link: fmt[6]
-              ? {
-                  prefetchTitle: fmt[6][0],
-                  raw: fmt[6][6][2],
-                  domain: fmt[6][7],
-                }
-              : null,
-          }))
-        : [],
+      formatting: msg[10] ? msg[10].map(_msg_formatting) : [],
     },
     user: {
       name: typeof msg[1] === 'string' ? msg[1] : undefined,
@@ -457,6 +441,46 @@ function _mark_read_room(obj) {
       uri: `space/${obj[2][0][0]}`,
       id: obj[2][0][0],
     },
+  };
+}
+
+function _msg_formatting(msg) {
+  return {
+    // 1 === link
+    // 6 === mention
+    // 8 === inlineblock text (see textType)
+    // 11 === google meet link
+    // 13 === image
+    type: msg[0],
+    unknownValue19: msg[19],
+    indexStart: msg[1],
+    indexEnd: msg[1] + msg[2],
+    // 5 == monospace text (inside `)
+    // 6 == `
+    // 7 == block text (inside ```)
+    textType: msg[7] ? msg[7][0] : null,
+    mention: msg[4] ? { id: msg[4][0][0] } : null,
+    link: msg[6]
+      ? {
+          prefetchTitle: msg[6][0],
+          prefetchDescription: msg[6][1],
+          raw: msg[6][6][2],
+          domain: msg[6][7],
+        }
+      : null,
+    image: msg[9]
+      ? {
+          data: msg[9][0],
+          title: msg[9][2],
+          format: msg[9][3],
+          dimensions: msg[9][4],
+        }
+      : null,
+    meet: msg[11]
+      ? {
+          link: msg[11][0][2],
+        }
+      : null,
   };
 }
 
