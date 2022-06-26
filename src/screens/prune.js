@@ -137,7 +137,7 @@ dms.on('focus', () => {
   dms.style.selected = COLORS_ACTIVE_SELECTED;
   screen.render();
 });
-EE.on('state.chats.loaded', () => {
+EE.on('state.chats.updated', () => {
   State.chats().forEach(c => {
     if (c.isDm) {
       dms._data.dms.push(c);
