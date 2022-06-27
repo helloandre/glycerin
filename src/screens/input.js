@@ -33,6 +33,8 @@ input.key('linefeed', () => EE.emit('messages.scroll.down'));
 input.key('C-g', () => EE.emit('messages.scroll.top'));
 input.key('C-l', () => EE.emit('messages.scroll.bottom'));
 input.key('C-e', () => EE.emit('messages.expand'));
+input.key('C-u', () => EE.emit('input.threads.up'));
+input.key('C-r', () => EE.emit('input.threads.down'));
 // input.key('C-p', () => {
 //   if (input._data.chat.isDm) {
 //     const curr = history();
@@ -44,14 +46,19 @@ input.key('C-e', () => EE.emit('messages.expand'));
 
 // these listeners need to be duplicated from screen
 // as input captures keys and doesn't bubble them
-// input.key('C-f /', () => EE.emit('search.local'));
-// input.key('C-f f', () => EE.emit('search.remote'));
+// input.key('C-t /', () => EE.emit('search.local'));
+// input.key('C-t f', () => EE.emit('search.remote'));
 input.key('C-n', async () => EE.emit('unread.next'));
 input.key('C-d', () => process.exit(0));
 input.key('escape', () => {
-  EE.emit('input.blur', input._data.from);
+  EE.emit('input.blur');
   input._data = false;
 });
+input.key('C-t c', () => {
+  EE.emit('input.blur', true);
+  input._data = false;
+});
+input.key('C-t l', () => EE.emit('state.pop'));
 
 input.on('focus', () => {
   const chat = State.chat();

@@ -81,6 +81,14 @@ EE.on('state.chats.updated', () => {
   }
   display();
 });
+EE.on('input.chats.up', () => {
+  chats.up();
+  EE.emit('chats.select', chats.chat());
+});
+EE.on('input.chats.down', () => {
+  chats.down();
+  EE.emit('chats.select', chats.chat());
+});
 
 function display() {
   // Object.keys(chats._data.config).forEach(type => {

@@ -8,7 +8,7 @@ const timestamp = require('./timestamp');
  */
 const _chats = {};
 const _threads = {};
-const _active = {
+let _active = {
   chat: false,
   thread: false,
   search: false,
@@ -18,6 +18,7 @@ const _search = {
   available: [],
 };
 let _unread = [];
+let _last = [];
 
 function _fetchChats() {
   return Chat.fetchChats().then(cs => {
@@ -59,14 +60,28 @@ async function _selectChat(chat) {
   EE.emit('state.chats.loading');
 
   if (chat.isDm) {
+    _active.thread = false;
     return Chat.fetchMessages(chat, timestamp.now()).then(msgs => {
       _chats[chat.uri].loading = false;
       _chats[chat.uri].messages = msgs;
       markRead();
     });
   } else {
-    return _fetchThreads(chat, timestamp.now()).then(markRead);
+    return _fetchThreads(chat, timestamp.now())
+      .then(markRead)
+      .then(() => {
+        ts = threads();
+        // always load the bottom one
+        if (ts && ts.threads.length) {
+          _selectThread(ts.threads[ts.threads.length - 1]);
+        }
+      });
   }
+}
+
+function _selectThread(t) {
+  _active.thread = t.id;
+  markRead();
 }
 
 /**
@@ -96,14 +111,13 @@ function markRead() {
     _threads[c.uri][t.id].isUnread = false;
     Chat.markRead(t);
 
-    // if there's any other threads in this chat that are unread
-    // put this chat back into unread at the proper place
-    const unreadThreads = threads().threads.filter(t => t.isUnread);
-    if (unreadThreads.length > 1) {
-      // TODO this is the wrong behavior for sorting by .mostRecentAt
-      // we need a .mostRecentUnreadAt
-      markUnread(c, unreadThreads[1].mostRecentAt);
-    }
+    // this causes the chats to jump around too much
+    // // if there's any other threads in this chat that are unread
+    // // put this chat back into unread at the proper place
+    // const unreadThreads = threads().threads.filter(t => t.isUnread);
+    // if (unreadThreads.length > 1) {
+    //   markUnread(c, unreadThreads[1].mostRecentAt);
+    // }
   }
 
   // TODO this is a naive removement of the first instance of chat
@@ -121,6 +135,8 @@ function markRead() {
 function markUnread(chat, mostRecentAt = false) {
   _chats[chat.uri].isUnread = true;
   if (mostRecentAt) {
+    // TODO this is the wrong behavior for sorting chats by .mostRecentAt
+    // we need a .mostRecentUnreadAt
     _chats[chat.uri].mostRecentAt = mostRecentAt;
   }
 
@@ -200,8 +216,7 @@ EE.on('chats.leave', chat => {
   });
 });
 EE.on('threads.select', t => {
-  _active.thread = t.id;
-  markRead();
+  _selectThread(t);
   EE.emit('state.threads.updated');
   EE.emit('state.messages.updated');
 });
@@ -223,14 +238,23 @@ EE.on('threads.fetchMore', () => {
     }
   });
 });
-EE.on('input.blur', () => {
+EE.on('state.pop', () => {
+  if (_last.length) {
+    _last.push(_active);
+    _active = { ..._last.shift() };
+    EE.emit('state.chats.updated');
+    EE.emit('state.threads.updated');
+    EE.emit('state.messages.updated');
+  }
+});
+EE.on('input.blur', (toChats = false) => {
   const c = chat();
   // not sure how this is possible yet, but seen it once
   if (!c) {
     return;
   }
 
-  if (c.isDm || !c.isThreaded) {
+  if (c.isDm || !c.isThreaded || toChats) {
     _active.thread = false;
     _active.chat = false;
   } else {
@@ -379,11 +403,12 @@ function chat() {
 }
 
 function threads() {
-  if (!_active.chat || !chat().isThreaded) {
+  const c = chat();
+  if (!c || !c.isThreaded) {
     return false;
   }
 
-  if (chat().loading) {
+  if (c.loading) {
     return { loading: true, threads: [] };
   }
 

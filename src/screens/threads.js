@@ -84,12 +84,7 @@ async function display() {
  * Keybindings
  */
 
-threads.key('n', () => {
-  if (!State.search()) {
-    EE.emit('threads.new', threads._data.chat);
-  }
-});
-threads.key(['k', 'up'], () => {
+function _up() {
   if (threads._data.fetchingMore) {
     return;
   }
@@ -110,13 +105,30 @@ threads.key(['k', 'up'], () => {
     threads.up();
     threads.screen.render();
   }
-});
-threads.key(['j', 'down'], () => {
+}
+
+function _down() {
   if (threads._data.fetchingMore) {
     return;
   }
   threads.down();
   threads.screen.render();
+}
+
+threads.key('n', () => {
+  if (!State.search()) {
+    EE.emit('threads.new', threads._data.chat);
+  }
+});
+threads.key(['k', 'up'], _up);
+EE.on('input.threads.up', () => {
+  _up();
+  EE.emit('threads.select', threads.thread());
+});
+threads.key(['j', 'down'], _down);
+EE.on('input.threads.down', () => {
+  _down();
+  EE.emit('threads.select', threads.thread());
 });
 threads.key(['g'], () => {
   threads.select(0);
@@ -132,6 +144,7 @@ threads.key('enter', () => {
 threads.key(['escape', 'q'], () => {
   EE.emit('threads.blur');
 });
+threads.key('C-t l', () => EE.emit('state.pop'));
 
 /**
  * Send events to messages

@@ -96,7 +96,7 @@ function textFromMsg(msg, me) {
       switch (f.type) {
         case 1:
           if (part !== f.link.raw) {
-            insert = `(${part})[${chalk.cyan(f.link.raw)}]`;
+            insert = `(${chalk.blue(part)})[${chalk.cyan(f.link.raw)}]`;
           } else {
             insert = chalk.cyan(part);
           }
@@ -131,10 +131,10 @@ function textFromMsg(msg, me) {
           }
           break;
         case 11:
-          insert = `${chalk.grey('<meet>:')} ${chalk.cyan(f.meet.link)}`;
+          insert = `${chalk.grey('<meet>:')} ${chalk.cyan(f.meet.link)} `;
           break;
         case 13:
-          insert = `${chalk.grey('<img>:')} ${f.image.title}`;
+          insert = `${chalk.grey('<img>:')} ${f.image.title} `;
           break;
       }
 
