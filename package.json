@@ -5,7 +5,7 @@
     "docopt": "^0.6.2",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "moment": "^2.24.0",
+    "moment": "^2.29.2",
     "neo-blessed": "https://github.com/helloandre/neo-blessed.git",
     "puppeteer": "^10.2.0",
     "qs": "^6.9.3"
