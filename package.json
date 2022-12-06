@@ -8,7 +8,7 @@
     "moment": "^2.29.2",
     "neo-blessed": "https://github.com/helloandre/neo-blessed.git",
     "puppeteer": "^10.2.0",
-    "qs": "^6.9.3"
+    "qs": "^6.9.7"
   },
   "name": "@helloandre/glycerin",
   "version": "0.0.1",
