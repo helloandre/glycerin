@@ -8,7 +8,7 @@ const request = require('./request');
  * @param {String} msg
  * @param {Object} room
  */
-module.exports = function (msg, room) {
+module.exports = (msg, room) => {
   // threads take their id from the first message id
   // so this is doing double duty
   const msgId = randomId(11);

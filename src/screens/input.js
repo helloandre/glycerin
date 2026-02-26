@@ -4,7 +4,7 @@ const State = require('../lib/state');
 const sendChatMessage = require('../lib/api/send-chat-message');
 const sendThreadMessage = require('../lib/api/send-thread-message');
 const createThread = require('../lib/api/create-thread');
-const Chat = require('../lib/model/chat');
+const _Chat = require('../lib/model/chat');
 const config = require('../lib/config');
 
 const input = blessed.textbox({
@@ -24,7 +24,7 @@ const input = blessed.textbox({
 });
 input._data = {};
 
-function history() {
+function _history() {
   return config.get(`history.${input._data.chat.id}`, false);
 }
 

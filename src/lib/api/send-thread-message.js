@@ -5,7 +5,7 @@ const {
 const randomId = require('../random-id');
 const request = require('./request');
 
-module.exports = function (msg, thread) {
+module.exports = (msg, thread) => {
   const msgId = randomId(11);
   return request('POST', URL_MUTATE, {
     'f.req': JSON.stringify([

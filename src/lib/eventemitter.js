@@ -1,3 +1,3 @@
-const EE = require('events');
+const EE = require('node:events');
 
 module.exports = new EE();

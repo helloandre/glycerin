@@ -1,8 +1,8 @@
 const request = require('./request-batch');
 const { RPCID_GET_SPACE_DETAILS } = require('../../../constants');
 
-module.exports = function (chat) {
-  return request({
+module.exports = chat =>
+  request({
     'f.req': JSON.stringify([
       [
         [
@@ -14,4 +14,3 @@ module.exports = function (chat) {
       ],
     ]),
   }).then(resp => resp[0][0]);
-};

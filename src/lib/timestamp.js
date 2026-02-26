@@ -6,7 +6,7 @@ const moment = require('moment');
  * @return {String}
  */
 function now(adjust = 0) {
-  return (Date.now() + adjust).toString() + '000';
+  return `${(Date.now() + adjust).toString()}000`;
 }
 
 /**

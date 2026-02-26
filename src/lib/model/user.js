@@ -31,7 +31,7 @@ async function whoami() {
  */
 function prefetch(user) {
   // if we've got a DM, the user comes already fetched
-  if (user.name && user.name.length) {
+  if (user.name?.length) {
     cache[user.id] = user;
   }
 

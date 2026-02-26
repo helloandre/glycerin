@@ -3,32 +3,55 @@
     "axios": "^0.21.2",
     "chalk": "^4.1.2",
     "docopt": "^0.6.2",
+    "google-chat-api": "github:Schachte/google-chat-api#main",
+    "ink": "^4.4.1",
+    "ink-select-input": "^5.0.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^5.0.1",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
     "moment": "^2.29.2",
-    "neo-blessed": "https://github.com/helloandre/neo-blessed.git",
-    "puppeteer": "^10.2.0",
-    "qs": "^6.9.3"
+    "playwright": "^1.58.2",
+    "qs": "^6.9.3",
+    "react": "^18.2.0"
   },
   "name": "@helloandre/glycerin",
   "version": "0.0.1",
-  "main": "index.js",
+  "type": "module",
+  "main": "dist/index.js",
   "bin": {
-    "gln": "./index.js"
+    "gln": "./dist/index.js"
   },
   "license": "MIT",
   "devDependencies": {
-    "babel-eslint": "^10.1.0",
-    "eslint": "^6.8.0",
-    "eslint-plugin-prettier": "^3.1.2",
-    "prettier": "^2.0.4"
+    "@biomejs/biome": "2.4.4",
+    "@testing-library/react": "^14.1.0",
+    "@types/jest": "^29.5.0",
+    "@types/lodash.get": "^4.4.9",
+    "@types/lodash.set": "^4.3.9",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.0",
+    "ink-testing-library": "^3.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0"
   },
   "scripts": {
-    "bootstrap": "yarn",
-    "start": "node index.js",
-    "debug": "node --inspect-brk index.js",
-    "ev": "node index.js -e",
-    "de": "node --inspect-brk index.js -e",
-    "leave": "node index.js leave"
+    "build": "tsc",
+    "start": "npm run build && node dist/index.js",
+    "dev": "ts-node --esm src/index.ts",
+    "debug": "node --inspect-brk -r ts-node/register src/index.ts",
+    "ev": "ts-node src/index.ts -e",
+    "de": "node --inspect-brk -r ts-node/register src/index.ts -e",
+    "leave": "ts-node src/index.ts leave",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format .",
+    "format:write": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write ."
   }
 }

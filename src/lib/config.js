@@ -1,12 +1,12 @@
-const os = require('os');
-const path = require('path');
-const fs = require('fs');
+const os = require('node:os');
+const path = require('node:path');
+const fs = require('node:fs');
 const loget = require('lodash.get');
 const loset = require('lodash.set');
 
 const FILENAME = '.glycerinconfig.json';
 const FILE = path.join(os.homedir(), FILENAME);
-let configData = undefined;
+let configData;
 
 function get(path, def) {
   if (!configData) {

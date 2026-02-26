@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 /**
  * AFACT this just needs to be a unique, base64-ish id
@@ -10,10 +10,9 @@ const crypto = require('crypto');
  *
  * @return {String}
  */
-module.exports = function (size) {
-  return crypto
+module.exports = size =>
+  crypto
     .randomBytes(24)
     .toString('base64')
     .replace(/\+|\/|-|_/g, '')
     .substring(0, size);
-};

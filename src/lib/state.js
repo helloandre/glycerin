@@ -17,8 +17,8 @@ const _search = {
   mode: false,
   available: [],
 };
-let _unread = [];
-let _last = [];
+const _unread = [];
+const _last = [];
 
 function _fetchChats() {
   return Chat.fetchChats().then(cs => {
@@ -72,7 +72,7 @@ async function _selectChat(chat) {
       .then(() => {
         ts = threads();
         // always load the bottom one
-        if (ts && ts.threads.length) {
+        if (ts?.threads.length) {
           _selectThread(ts.threads[ts.threads.length - 1]);
         }
       });
@@ -349,7 +349,7 @@ EE.once('state.fetched', () => {
                 ..._threads[c.uri][evt.thread.id],
                 messages: _threads[c.uri][evt.thread.id].messages.concat(evt),
                 mostRecentAt: evt.mostRecentAt,
-                isUnread: _active.thread != evt.thread.id,
+                isUnread: _active.thread !== evt.thread.id,
                 total: _threads[c.uri][evt.thread.id].total + 1,
               };
             }
@@ -362,7 +362,7 @@ EE.once('state.fetched', () => {
             _threads[c.uri][evt.thread.id] = {
               messages: [evt],
               mostRecentAt: evt.mostRecentAt,
-              isUnread: _active.thread != evt.thread.id,
+              isUnread: _active.thread !== evt.thread.id,
             };
           }
         }

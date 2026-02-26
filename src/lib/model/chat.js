@@ -99,7 +99,7 @@ function fetchThreads(chat, before, preview = false) {
  * @param {unpack.chat|unpack.thread} obj
  * @param {Boolean} ignoreCache
  */
-async function messages(obj, ignoreCache = false) {
+async function _messages(obj, ignoreCache = false) {
   // obj is unpack.chat
   if (obj.isDm) {
     if (!cache[obj.uri].messages || ignoreCache) {

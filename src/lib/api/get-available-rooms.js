@@ -4,8 +4,8 @@ const {
   ACTIONID_GET_AVAILABLE_ROOMS,
 } = require('../../../constants');
 
-module.exports = function () {
-  return request('POST', URL_DATA, {
+module.exports = () =>
+  request('POST', URL_DATA, {
     'f.req': JSON.stringify([
       [
         [
@@ -18,4 +18,3 @@ module.exports = function () {
       ],
     ]),
   }).then(resp => resp[ACTIONID_GET_AVAILABLE_ROOMS][0]);
-};

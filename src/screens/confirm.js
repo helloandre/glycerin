@@ -16,7 +16,7 @@ const confirm = blessed.question({
 function ask(question) {
   confirm.show();
   return new Promise(res => {
-    confirm.ask(`${question} [Yn]`, (err, ans) => {
+    confirm.ask(`${question} [Yn]`, (_err, ans) => {
       confirm.hide();
       confirm.screen.render();
 

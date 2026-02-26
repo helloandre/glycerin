@@ -1,7 +1,7 @@
 const { URL_DATA, ACTIONID_GET_CHAT_THREADS } = require('../../../constants');
 const request = require('./request');
 
-module.exports = function (chat, before, preview = false) {
+module.exports = (chat, before, preview = false) => {
   const param = preview
     ? [[chat.uri, chat.id, 2], true, null, null, true, null, true]
     : [

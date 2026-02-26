@@ -35,7 +35,7 @@ function show() {
     clearInterval(working._.timer);
   }
 
-  working._.timer = setInterval(function () {
+  working._.timer = setInterval(() => {
     working.style.fg = FGS[working._.counter % FGS.length];
     working.screen.render();
     working._.counter++;

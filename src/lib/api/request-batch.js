@@ -12,7 +12,7 @@ const { DEFAULT_HEADERS, URL_BATCHEXECUTE } = require('../../../constants');
  * @param {Object} [params] default: {}
  * @param {Object} [headers] default: {}
  */
-module.exports = function (data = {}) {
+module.exports = (data = {}) => {
   const { at, cookie } = auth.requestData();
   return axios({
     method: 'POST',

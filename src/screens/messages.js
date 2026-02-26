@@ -46,7 +46,7 @@ async function display() {
   }
 
   const formatted = [];
-  for (let msg of displayable.messages) {
+  for (const msg of displayable.messages) {
     formatted.push(await format.message(msg));
   }
 

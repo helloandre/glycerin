@@ -1,8 +1,8 @@
 const { URL_DATA, ACTIONID_GET_USERS } = require('../../../constants');
 const request = require('./request');
 
-module.exports = function (data) {
-  return request('POST', URL_DATA, {
+module.exports = data =>
+  request('POST', URL_DATA, {
     'f.req': JSON.stringify([
       [
         [
@@ -33,4 +33,3 @@ module.exports = function (data) {
       ],
     ]),
   }).then(resp => resp[ACTIONID_GET_USERS][1]);
-};

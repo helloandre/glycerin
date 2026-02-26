@@ -12,7 +12,7 @@ const request = require('./request');
  *
  * @return {Promise}
  */
-module.exports = function (msg, room, history = false) {
+module.exports = (msg, room, history = false) => {
   const msgId = randomId(11);
 
   return request('POST', URL_MUTATE, {

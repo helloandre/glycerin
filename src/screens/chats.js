@@ -1,9 +1,9 @@
 const blessed = require('neo-blessed');
 const State = require('../lib/state');
-const Chat = require('../lib/model/chat');
+const _Chat = require('../lib/model/chat');
 const EE = require('../lib/eventemitter');
 const format = require('../lib/format');
-const working = require('./working');
+const _working = require('./working');
 const confirm = require('./confirm');
 const {
   COLORS_ACTIVE_ITEM,
@@ -29,9 +29,7 @@ const chats = blessed.list({
 chats._data = {
   visible: [],
 };
-chats.chat = function () {
-  return chats._data.visible[chats.selected];
-};
+chats.chat = () => chats._data.visible[chats.selected];
 
 /**
  * Keybindings

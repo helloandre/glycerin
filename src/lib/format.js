@@ -51,7 +51,7 @@ async function message(msg, truncate = false) {
   const name = await User.name(msg.user);
   const me = await User.whoami();
 
-  return `${chalk.grey(stamp + '>')} ${chalk.underline(name)}: ${
+  return `${chalk.grey(`${stamp}>`)} ${chalk.underline(name)}: ${
     truncate ? msg.text.raw.split('\n').shift() : textFromMsg(msg.text, me)
   }`;
 }
@@ -80,13 +80,13 @@ function checkbox(item) {
  */
 function textFromMsg(msg, me) {
   const orig = msg.raw.length ? msg.raw : '';
-  let text = orig + '';
+  let text = `${orig}`;
   // if we insert text that is a different length than part
   let offset = 0;
 
   if (msg.formatting) {
     for (const f of msg.formatting) {
-      let part = orig.substring(f.indexStart, f.indexEnd);
+      const part = orig.substring(f.indexStart, f.indexEnd);
       let insert = part;
       // 1 === link
       // 6 === mention
@@ -118,7 +118,7 @@ function textFromMsg(msg, me) {
             case 6:
               insert = '';
               break;
-            case 7:
+            case 7: {
               const parts = part.split('\n');
               const longestLine = parts.reduce(
                 (max, line) => (line.length > max ? line.length : max),
@@ -128,6 +128,7 @@ function textFromMsg(msg, me) {
                 parts.map(line => line.padEnd(longestLine)).join('\n')
               )}\n`;
               break;
+            }
           }
           break;
         case 11:

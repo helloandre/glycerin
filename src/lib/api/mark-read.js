@@ -6,7 +6,7 @@ const {
 const request = require('./request');
 const { now } = require('../timestamp');
 
-module.exports = function (obj) {
+module.exports = obj => {
   const actionId = obj.isDm ? ACTIONID_MARK_DM_READ : ACTIONID_MARK_THREAD_READ;
   const payload = obj.isDm
     ? [obj.uri, obj.id, 5]

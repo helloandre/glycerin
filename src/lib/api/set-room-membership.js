@@ -4,7 +4,7 @@ const {
 } = require('../../../constants');
 const request = require('./request');
 
-module.exports = function (chat, user, join = true) {
+module.exports = (chat, user, join = true) => {
   const action = join ? 2 : 3; // hooray magic values!
   return request('POST', URL_DATA, {
     'f.req': JSON.stringify([

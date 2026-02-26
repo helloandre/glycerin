@@ -16,7 +16,7 @@ const DEFAULT_PARAMS = {
  * @param {Object} [params] default: {}
  * @param {Object} [headers] default: {}
  */
-module.exports = function (method, url, data = {}, params = {}, headers = {}) {
+module.exports = (method, url, data = {}, params = {}, headers = {}) => {
   const { at, cookie } = auth.requestData();
   return axios({
     method,

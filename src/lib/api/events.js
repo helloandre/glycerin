@@ -1,4 +1,4 @@
-const https = require('https');
+const https = require('node:https');
 const qs = require('qs');
 const auth = require('./auth');
 const parse = require('./parse');
@@ -19,7 +19,7 @@ let AID = 0;
  *
  * @return {Promise}
  */
-module.exports = function () {
+module.exports = () => {
   process.nextTick(async () => {
     let refresh = true;
     // eslint-disable-next-line no-constant-condition
@@ -74,7 +74,7 @@ async function longPoll(refresh = false) {
               AID = parsed[0][parsed[0].length - 1][0];
 
               data = '';
-            } catch (e) {
+            } catch (_e) {
               // console.log(e, data);
               // can be expected as chunks aren't always complete json,
               // just keep going, we'll append more data next time around

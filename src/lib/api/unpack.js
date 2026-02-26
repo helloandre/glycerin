@@ -225,7 +225,7 @@ function event(evt) {
   );
 }
 
-function _roomEvent(base, type, data) {
+function _roomEvent(base, _type, data) {
   return { ...base, unknown: true, _data: data };
 }
 

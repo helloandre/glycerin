@@ -101,7 +101,7 @@ screen.append(progress);
 prune.append(rooms);
 prune.append(dms);
 
-screen.on('keypress', (ch, key) => {
+screen.on('keypress', (_ch, key) => {
   switch (key.full) {
     case 'left':
       return rooms.focus();
@@ -158,9 +158,8 @@ function bootstrap() {
 
 function toggle() {
   if (screen.focused === rooms) {
-    rooms._data.rooms[rooms.selected].checked = !rooms._data.rooms[
-      rooms.selected
-    ].checked;
+    rooms._data.rooms[rooms.selected].checked =
+      !rooms._data.rooms[rooms.selected].checked;
   } else {
     dms._data.dms[dms.selected].checked = !dms._data.dms[dms.selected].checked;
   }
@@ -181,7 +180,7 @@ async function leave() {
     return;
   }
 
-  confirm.ask(`Leave ${toLeave.length} rooms? [Yn]`, async (err, ans) => {
+  confirm.ask(`Leave ${toLeave.length} rooms? [Yn]`, async (_err, ans) => {
     confirm.hide();
     screen.render();
 
@@ -190,7 +189,7 @@ async function leave() {
       screen.render();
 
       const user = await User.whoami();
-      for (let idx in toLeave) {
+      for (const idx in toLeave) {
         if (toLeave[idx].isDm) {
           await hideChat(toLeave[idx]);
         } else {

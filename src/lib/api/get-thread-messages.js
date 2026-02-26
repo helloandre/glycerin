@@ -4,8 +4,8 @@ const {
   ACTIONID_GET_THREAD_MESSAGES,
 } = require('../../../constants');
 
-module.exports = function (thread) {
-  return request('POST', URL_DATA, {
+module.exports = thread =>
+  request('POST', URL_DATA, {
     'f.req': JSON.stringify([
       [
         [
@@ -28,4 +28,3 @@ module.exports = function (thread) {
       ],
     ]),
   }).then(resp => resp[ACTIONID_GET_THREAD_MESSAGES][0]);
-};

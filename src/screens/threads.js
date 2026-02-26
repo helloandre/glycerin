@@ -37,9 +37,7 @@ const threads = blessed.list({
 threads._data = {
   visible: [],
 };
-threads.thread = function () {
-  return threads._data.visible[threads.selected];
-};
+threads.thread = () => threads._data.visible[threads.selected];
 
 async function display() {
   const displayable = State.threads();
@@ -57,7 +55,7 @@ async function display() {
   } else {
     threads._data.visible = displayable.threads;
     const formatted = [];
-    for (let thread of displayable.threads) {
+    for (const thread of displayable.threads) {
       formatted.push(await format.thread(thread));
     }
     threads.setItems(formatted);
@@ -171,7 +169,7 @@ threads.on('blur', () => {
 EE.on('state.chats.loading', display);
 EE.on('state.threads.updated', () => {
   const c = State.chat();
-  if (c && c.isThreaded && !State.thread()) {
+  if (c?.isThreaded && !State.thread()) {
     threads.focus();
   }
   display();
