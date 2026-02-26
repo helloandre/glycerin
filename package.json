@@ -38,7 +38,9 @@
     "typescript": "^5.3.0"
   },
   "scripts": {
+    "postinstall": "cd node_modules/google-chat-api/packages/gchat && npm run build || echo 'Warning: Could not build google-chat-api. Try: npm run build:deps'",
     "build": "tsc",
+    "build:deps": "cd node_modules/google-chat-api/packages/gchat && npm run build",
     "start": "npm run build && node dist/index.js",
     "dev": "ts-node --esm src/index.ts",
     "debug": "node --inspect-brk -r ts-node/register src/index.ts",
@@ -52,6 +54,8 @@
     "format": "biome format .",
     "format:write": "biome format --write .",
     "check": "biome check .",
-    "check:fix": "biome check --write ."
+    "check:fix": "biome check --write .",
+    "reinstall": "rm -rf node_modules package-lock.json && npm install",
+    "prepare": "npm run build:deps 2>/dev/null || true"
   }
 }

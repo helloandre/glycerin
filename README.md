@@ -8,17 +8,69 @@
 
 ## Install
 
-- install: `yarn bootstrap` [^1]
+```bash
+# Clone the repository
+git clone <repo-url>
+cd glycerin
+
+# Install dependencies
+npm install
+
+# The postinstall script will automatically build the google-chat-api dependency
+# If it fails, manually build it:
+npm run build:deps
+```
+
+### Troubleshooting Installation
+
+If you see errors about missing `dist` folder in `google-chat-api`:
+
+```bash
+# Build the dependency manually
+npm run build:deps
+
+# Or do a clean reinstall
+npm run reinstall
+```
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for more details.
 
 ## Running
 
-- run: `yarn start`
-- watch events go by: `yarn ev`
+```bash
+# Build and start the app
+npm run start
 
-## Helpful One-offs
+# Or run in development mode
+npm run dev
+```
 
-- Quickly leave a bunch of rooms and/or dms:
-  - `yarn leave`
+### First Run
+
+On first run, if you don't have cached authentication:
+
+1. A Chromium browser window will open automatically
+2. Log in to your Google Chat account
+3. The browser will close automatically once authenticated
+4. Cookies are cached for future runs
+
+**Note:** Playwright browsers will be installed automatically on first run if not already present.
+
+## Helpful Commands
+
+```bash
+# Quickly leave a bunch of rooms and/or dms
+npm run leave
+
+# Force re-authentication
+npm run start -- --auth
+
+# Run tests
+npm test
+
+# Lint and format code
+npm run check:fix
+```
 
 # Key Bindings
 
@@ -97,5 +149,3 @@
 - listen for user input (`src/screens/input.js`)
 
 users are fetched/cached in `lib/model/user.js`
-
-[^1]: we can't use chrome because https://support.google.com/accounts/thread/22873505?msgid=24501976
