@@ -1,6 +1,12 @@
 /**
  * File-based logging utility
  * Logs to glycerin.log to avoid interfering with Ink's TUI rendering
+ *
+ * Usage:
+ *   DEBUG=true npm start              - Enable logging at INFO level
+ *   GLYCERIN_LOG_LEVEL=DEBUG npm start - Set specific log level
+ *
+ * Note: LOG_LEVEL env var is reserved by google-chat-api library
  */
 
 import fs from 'fs';
@@ -31,9 +37,12 @@ class Logger {
   private enabled: boolean;
 
   constructor() {
-    // Enable logging based on DEBUG or LOG_LEVEL environment variables
-    this.enabled = process.env.DEBUG === 'true' || !!process.env.LOG_LEVEL;
-    this.logLevel = this.parseLogLevel(process.env.LOG_LEVEL || 'INFO');
+    // Enable logging based on DEBUG or GLYCERIN_LOG_LEVEL environment variables
+    this.enabled =
+      process.env.DEBUG === 'true' || !!process.env.GLYCERIN_LOG_LEVEL;
+    this.logLevel = this.parseLogLevel(
+      process.env.GLYCERIN_LOG_LEVEL || 'INFO'
+    );
   }
 
   private parseLogLevel(level: string): LogLevel {

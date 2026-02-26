@@ -5,12 +5,18 @@
  * Main entry point
  */
 
-import { docopt } from "docopt";
-import { render } from "ink";
-import React from "react";
-import { App } from "./components/App.js";
-import { initAuth } from "./lib/auth.js";
-import { GlycerinChatClient } from "./lib/chat-client.js";
+// Disable google-chat-api logging to prevent interference with TUI
+// Must be set before importing any google-chat-api modules
+if (!process.env.LOG_LEVEL) {
+  process.env.LOG_LEVEL = 'silent';
+}
+
+import { docopt } from 'docopt';
+import { render } from 'ink';
+import React from 'react';
+import { App } from './components/App.js';
+import { initAuth } from './lib/auth.js';
+import { GlycerinChatClient } from './lib/chat-client.js';
 
 const doc = `
 Glycerin - Google Chat Terminal User Interface
@@ -34,7 +40,7 @@ async function main() {
     // Initialize authentication
     // By default, this will launch a Playwright browser if no cached cookies exist
     const cookies = await initAuth({
-      forceReauth: opts["--auth"] || false,
+      forceReauth: opts['--auth'] || false,
       // Note: --browser option only applies if tryBrowserExtraction is true
     });
 
@@ -55,13 +61,13 @@ async function main() {
     await waitUntilExit();
     process.exit(0);
   } catch (error) {
-    console.error("Failed to start Glycerin:", error.message);
-    console.error("\nTroubleshooting:");
+    console.error('Failed to start Glycerin:', error.message);
+    console.error('\nTroubleshooting:');
     console.error(
-      "  1. Complete the Google Chat login in the Playwright browser window",
+      '  1. Complete the Google Chat login in the Playwright browser window'
     );
     console.error(
-      "  2. Try running with --auth flag to force re-authentication",
+      '  2. Try running with --auth flag to force re-authentication'
     );
     process.exit(1);
   }
