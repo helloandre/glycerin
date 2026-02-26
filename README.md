@@ -26,7 +26,10 @@ npm run build:deps
 If you see errors about missing `dist` folder in `google-chat-api`:
 
 ```bash
-# Build the dependency manually
+# Verify if google-chat-api is properly built
+npm run verify:deps
+
+# If it fails, build the dependency manually
 npm run build:deps
 
 # Or do a clean reinstall

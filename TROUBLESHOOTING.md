@@ -4,6 +4,12 @@
 
 If you see TypeScript errors related to `google-chat-api` when running `npm run build`, this is because the package is installed directly from GitHub and needs to be built after installation.
 
+### Common Error Messages
+
+- `Cannot find module 'google-chat-api/packages/gchat/dist/core/auth.js'`
+- `Module not found: Error: Can't resolve 'google-chat-api/packages/gchat/dist/...'`
+- TypeScript errors about missing type declarations
+
 ### Solution
 
 1. **Make sure you have Git installed and configured:**
@@ -19,13 +25,20 @@ If you see TypeScript errors related to `google-chat-api` when running `npm run 
    npm install
    ```
 
-   The `postinstall` script should automatically build `google-chat-api`.
+   The `postinstall` script should automatically:
+   - Install `google-chat-api` from GitHub
+   - Install its dependencies
+   - Build it (compile TypeScript to JavaScript)
 
 3. **If the build didn't happen automatically, manually build it:**
 
    ```bash
    npm run build:deps
    ```
+
+   This will:
+   - Install dependencies inside `google-chat-api/packages/gchat`
+   - Run `tsc` to compile the TypeScript code
 
 4. **Verify google-chat-api was built:**
 
@@ -35,32 +48,87 @@ If you see TypeScript errors related to `google-chat-api` when running `npm run 
 
    You should see `.js`, `.d.ts` files (compiled JavaScript and TypeScript declarations).
 
-5. **If the above doesn't work, try installing with legacy peer deps:**
+   Example output:
+
+   ```
+   auth.js
+   auth.d.ts
+   client.js
+   client.d.ts
+   extract-cookies.js
+   extract-cookies.d.ts
+   ...
+   ```
+
+5. **If the above doesn't work, try step-by-step:**
+
+   ```bash
+   # Install google-chat-api dependencies manually
+   cd node_modules/google-chat-api/packages/gchat
+   npm install
+   npm run build
+   cd ../../../..
+
+   # Now build your project
+   npm run build
+   ```
+
+6. **Still having issues? Try with legacy peer deps:**
 
    ```bash
    npm install --legacy-peer-deps
    npm run build:deps
    ```
 
-6. **Clean install all dependencies:**
+7. **Clean install all dependencies:**
 
    ```bash
    rm -rf node_modules package-lock.json
    npm install
    ```
 
-7. **Verify google-chat-api was installed:**
+   The `postinstall` script should automatically build `google-chat-api`.
+
+8. **If the build didn't happen automatically, manually build it:**
+
+   ```bash
+   npm run build:deps
+   ```
+
+9. **Verify google-chat-api was built:**
 
    ```bash
    ls -la node_modules/google-chat-api/packages/gchat/dist/core/
    ```
 
-   You should see `.d.ts` files (TypeScript declarations).
+   You should see `.js`, `.d.ts` files (compiled JavaScript and TypeScript declarations).
 
-8. **If the above doesn't work, try installing with legacy peer deps:**
-   ```bash
-   npm install --legacy-peer-deps
-   ```
+10. **If the above doesn't work, try installing with legacy peer deps:**
+
+    ```bash
+    npm install --legacy-peer-deps
+    npm run build:deps
+    ```
+
+11. **Clean install all dependencies:**
+
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+
+12. **Verify google-chat-api was installed:**
+
+    ```bash
+    ls -la node_modules/google-chat-api/packages/gchat/dist/core/
+    ```
+
+    You should see `.d.ts` files (TypeScript declarations).
+
+13. **If the above doesn't work, try installing with legacy peer deps:**
+    ```bash
+    npm install --legacy-peer-deps
+    ```
 
 ### Common Issues
 
