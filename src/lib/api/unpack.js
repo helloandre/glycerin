@@ -207,8 +207,8 @@ function event(evt) {
       ? _withUUID(base, type, mainData)
       : _roomEvent(base, type, mainData);
   } catch (e) {
-    console.log(e);
-    JSON.stringify(mainData, null, 2);
+    const { logger } = require('../logger.js');
+    logger.error('Error unpacking message', { error: e, data: mainData });
     unpacked = {
       error: true,
       ...base,

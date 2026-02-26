@@ -92,7 +92,10 @@ async function register() {
     },
   })
     .then(({ headers }) => headers['set-cookie'][0].split(' ').shift())
-    .catch(e => console.log(e));
+    .catch(e => {
+      const { logger } = require('../logger.js');
+      logger.error('Error getting events cookie', e);
+    });
   const cookie = `${eventsCookie} ${AUTH.request.cookie}`;
 
   const SID = await axios({
@@ -126,7 +129,10 @@ async function register() {
     }),
   })
     .then(({ data }) => parse.fromEvents(data)[0][0][1][1])
-    .catch(e => console.log(e));
+    .catch(e => {
+      const { logger } = require('../logger.js');
+      logger.error('Error getting SID', e);
+    });
 
   return {
     cookie,

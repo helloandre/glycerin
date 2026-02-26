@@ -2,3 +2,7 @@ node_modules
 .vscode
 .DS_Store
 dist
+
+# Log files
+*.log
+.glycerin/

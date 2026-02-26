@@ -3,9 +3,10 @@
  * Connects google-chat-api WebChannel events to React state updates
  */
 
-import { useEffect } from "react";
-import { useAppState } from "../context/AppContext.js";
-import type { GlycerinChatClient } from "../lib/chat-client.js";
+import { useEffect } from 'react';
+import { useAppState } from '../context/AppContext.js';
+import type { GlycerinChatClient } from '../lib/chat-client.js';
+import { logger } from '../lib/logger.js';
 
 interface EventBridgeProps {
   client: GlycerinChatClient;
@@ -23,7 +24,7 @@ export function EventBridge({ client }: EventBridgeProps) {
           handleEvent(event);
         });
       } catch (error) {
-        console.error("Failed to start event stream:", error);
+        logger.error('Failed to start event stream', error);
       }
     };
 
@@ -33,30 +34,30 @@ export function EventBridge({ client }: EventBridgeProps) {
 
       // Map google-chat-api events to our state actions
       switch (event.type) {
-        case "message":
+        case 'message':
           // New message received
           if (event.message) {
             dispatch({
-              type: "MESSAGE_RECEIVED",
+              type: 'MESSAGE_RECEIVED',
               payload: event.message,
             });
           }
           break;
 
-        case "thread_updated":
+        case 'thread_updated':
           // Thread was updated (new message in thread)
           // We'll need to refetch the thread
           break;
 
-        case "space_updated":
+        case 'space_updated':
           // Space metadata changed
           break;
 
-        case "read_state":
+        case 'read_state':
           // Read state changed
           if (event.space_id) {
             dispatch({
-              type: "MARK_READ",
+              type: 'MARK_READ',
               payload: {
                 chatId: event.space_id,
                 threadId: event.topic_id,

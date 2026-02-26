@@ -3,12 +3,13 @@
  * Text input for sending messages
  */
 
-import { Box, Text } from "ink";
-import TextInput from "ink-text-input";
-import { useState } from "react";
-import { useCurrentChat, useCurrentThread } from "../context/AppContext.js";
-import { useFocus } from "../hooks/useFocus.js";
-import type { GlycerinChatClient } from "../lib/chat-client.js";
+import { Box, Text } from 'ink';
+import TextInput from 'ink-text-input';
+import { useState } from 'react';
+import { useCurrentChat, useCurrentThread } from '../context/AppContext.js';
+import { useFocus } from '../hooks/useFocus.js';
+import type { GlycerinChatClient } from '../lib/chat-client.js';
+import { logger } from '../lib/logger.js';
 
 interface InputBoxProps {
   client: GlycerinChatClient;
@@ -17,8 +18,8 @@ interface InputBoxProps {
 export function InputBox({ client }: InputBoxProps) {
   const currentChat = useCurrentChat();
   const currentThread = useCurrentThread();
-  const { isFocused } = useFocus("input");
-  const [value, setValue] = useState("");
+  const { isFocused } = useFocus('input');
+  const [value, setValue] = useState('');
   const [sending, setSending] = useState(false);
 
   const handleSubmit = async (text: string) => {
@@ -27,9 +28,9 @@ export function InputBox({ client }: InputBoxProps) {
     setSending(true);
     try {
       if (
-        currentChat.type === "dm" ||
+        currentChat.type === 'dm' ||
         !currentThread ||
-        currentThread.topic_id === "dm"
+        currentThread.topic_id === 'dm'
       ) {
         // Send as new message to chat (for DMs or when no thread selected)
         await client.sendMessage(currentChat.id, text);
@@ -38,12 +39,12 @@ export function InputBox({ client }: InputBoxProps) {
         await client.replyToThread(
           currentChat.id,
           currentThread.topic_id,
-          text,
+          text
         );
       }
-      setValue("");
+      setValue('');
     } catch (error) {
-      console.error("Failed to send message:", error);
+      logger.error('Failed to send message', error);
     } finally {
       setSending(false);
     }
@@ -55,7 +56,7 @@ export function InputBox({ client }: InputBoxProps) {
   }
 
   // Don't show input if space selected but no thread
-  if (currentChat.type === "space" && !currentThread) {
+  if (currentChat.type === 'space' && !currentThread) {
     return null;
   }
 
@@ -66,12 +67,12 @@ export function InputBox({ client }: InputBoxProps) {
       flexShrink={0}
       height={4}
       borderStyle="single"
-      borderColor={isFocused ? "cyan" : "gray"}
+      borderColor={isFocused ? 'cyan' : 'gray'}
       paddingX={1}
     >
       <Box marginBottom={1}>
-        <Text bold color={isFocused ? "cyan" : "gray"}>
-          {sending ? "Sending..." : "Message"}
+        <Text bold color={isFocused ? 'cyan' : 'gray'}>
+          {sending ? 'Sending...' : 'Message'}
         </Text>
       </Box>
 

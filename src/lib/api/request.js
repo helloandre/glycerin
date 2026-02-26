@@ -40,7 +40,8 @@ module.exports = (method, url, data = {}, params = {}, headers = {}) => {
       return resp[0][0][2] ? resp[0][0][2] : resp;
     })
     .catch(e => {
-      console.log(e);
+      const { logger } = require('../logger.js');
+      logger.error('Request error', e);
       return e.response.data;
     });
 };

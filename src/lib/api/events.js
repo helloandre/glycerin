@@ -84,7 +84,8 @@ async function longPoll(refresh = false) {
         }
       )
       .on('error', e => {
-        console.log(e);
+        const { logger } = require('../logger.js');
+        logger.error('HTTP request error', e);
       });
   });
 }

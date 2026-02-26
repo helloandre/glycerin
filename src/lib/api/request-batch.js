@@ -28,7 +28,8 @@ module.exports = (data = {}) => {
   })
     .then(({ data }) => fromBatchExecute(data))
     .catch(e => {
-      console.log(e);
+      const { logger } = require('../logger.js');
+      logger.error('Batch request error', e);
       return e.response.data;
     });
 };
