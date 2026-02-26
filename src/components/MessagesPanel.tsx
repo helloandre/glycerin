@@ -3,17 +3,17 @@
  * Displays messages for the selected thread or DM
  */
 
-import { Box, Text } from 'ink';
-import { useEffect, useState } from 'react';
-import { useCurrentChat, useCurrentThread } from '../context/AppContext.js';
-import { useFocus } from '../hooks/useFocus.js';
-import { useKeyHandler } from '../hooks/useKeyHandler.js';
-import type { Message } from '../types/index.js';
+import { Box, Text } from "ink";
+import { useEffect, useState } from "react";
+import { useCurrentChat, useCurrentThread } from "../context/AppContext.js";
+import { useFocus } from "../hooks/useFocus.js";
+import { useKeyHandler } from "../hooks/useKeyHandler.js";
+import type { Message } from "../types/index.js";
 
 export function MessagesPanel() {
   const currentThread = useCurrentThread();
   const currentChat = useCurrentChat();
-  const { isFocused } = useFocus('messages');
+  const { isFocused } = useFocus("messages");
   const [scrollOffset, setScrollOffset] = useState(0);
 
   // Get messages from current thread or chat
@@ -27,12 +27,12 @@ export function MessagesPanel() {
   // Keyboard handlers for scrolling
   useKeyHandler(
     {
-      'ctrl+k': () => handleScrollUp(),
-      'ctrl+j': () => handleScrollDown(),
-      'ctrl+g': () => setScrollOffset(0),
-      'ctrl+l': () => setScrollOffset(Math.max(0, messages.length - 10)),
+      "ctrl+k": () => handleScrollUp(),
+      "ctrl+j": () => handleScrollDown(),
+      "ctrl+g": () => setScrollOffset(0),
+      "ctrl+l": () => setScrollOffset(Math.max(0, messages.length - 10)),
     },
-    { enabled: isFocused }
+    { enabled: isFocused },
   );
 
   const handleScrollUp = () => {
@@ -41,7 +41,7 @@ export function MessagesPanel() {
 
   const handleScrollDown = () => {
     setScrollOffset(
-      Math.min(Math.max(0, messages.length - 10), scrollOffset + 1)
+      Math.min(Math.max(0, messages.length - 10), scrollOffset + 1),
     );
   };
 
@@ -50,15 +50,15 @@ export function MessagesPanel() {
     const timestamp = message.timestamp_usec || 0;
     const date = new Date(timestamp / 1000);
     const timeStr = date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: "2-digit",
+      minute: "2-digit",
     });
 
     // Get user name
-    const userName = message.sender || 'Unknown';
+    const userName = message.sender || "Unknown";
 
     // Get message text
-    const text = message.text || '';
+    const text = message.text || "";
 
     return (
       <Box
@@ -92,13 +92,13 @@ export function MessagesPanel() {
     <Box
       flexDirection="column"
       width="75%"
-      height={currentChat?.type === 'dm' ? '90%' : '65%'}
+      flexGrow={1}
       borderStyle="single"
-      borderColor={isFocused ? 'cyan' : 'gray'}
+      borderColor={isFocused ? "cyan" : "gray"}
       paddingX={1}
     >
       <Box marginBottom={1}>
-        <Text bold color={isFocused ? 'cyan' : 'gray'}>
+        <Text bold color={isFocused ? "cyan" : "gray"}>
           Messages {messages.length > 0 && `(${messages.length})`}
           {showScrollIndicator && ` - ${scrollPosition}%`}
         </Text>

@@ -42,8 +42,18 @@ async function main() {
     const client = new GlycerinChatClient();
     await client.init(cookies);
 
-    // Render the app
-    render(React.createElement(App, { client }));
+    // Render the app with explicit terminal configuration
+    const { waitUntilExit } = render(React.createElement(App, { client }), {
+      stdout: process.stdout,
+      stdin: process.stdin,
+      stderr: process.stderr,
+      exitOnCtrlC: true,
+      patchConsole: true,
+    });
+
+    // Ensure proper cleanup on exit
+    await waitUntilExit();
+    process.exit(0);
   } catch (error) {
     console.error("Failed to start Glycerin:", error.message);
     console.error("\nTroubleshooting:");

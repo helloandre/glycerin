@@ -3,17 +3,17 @@
  * Layout and orchestration of all UI components
  */
 
-import { Box, Text } from 'ink';
-import { useEffect } from 'react';
-import { AppStateProvider, useAppState } from '../context/AppContext.js';
-import type { GlycerinChatClient } from '../lib/chat-client.js';
-import type { Chat } from '../types/index.js';
-import { ChatsPanel } from './ChatsPanel.js';
-import { EventBridge } from './EventBridge.js';
-import { InputBox } from './InputBox.js';
-import { LoadingIndicator } from './LoadingIndicator.js';
-import { MessagesPanel } from './MessagesPanel.js';
-import { ThreadsPanel } from './ThreadsPanel.js';
+import { Box, Text, useStdout } from "ink";
+import { useEffect } from "react";
+import { AppStateProvider, useAppState } from "../context/AppContext.js";
+import type { GlycerinChatClient } from "../lib/chat-client.js";
+import type { Chat } from "../types/index.js";
+import { ChatsPanel } from "./ChatsPanel.js";
+import { EventBridge } from "./EventBridge.js";
+import { InputBox } from "./InputBox.js";
+import { LoadingIndicator } from "./LoadingIndicator.js";
+import { MessagesPanel } from "./MessagesPanel.js";
+import { ThreadsPanel } from "./ThreadsPanel.js";
 
 interface AppProps {
   client: GlycerinChatClient;
@@ -21,11 +21,19 @@ interface AppProps {
 
 function AppContent({ client }: AppProps) {
   const { state, dispatch } = useAppState();
+  const { stdout } = useStdout();
+
+  // Log terminal dimensions for debugging (can be removed after testing)
+  useEffect(() => {
+    if (process.env.DEBUG) {
+      console.error(`Terminal size: ${stdout.columns}x${stdout.rows}`);
+    }
+  }, [stdout.columns, stdout.rows]);
 
   // Load chats on mount
   useEffect(() => {
     const loadChats = async () => {
-      dispatch({ type: 'LOADING_START', payload: 'chats' });
+      dispatch({ type: "LOADING_START", payload: "chats" });
       try {
         // Use listWorldItems which includes unread counts
         const worldItems = await client.getChatsWithUnread();
@@ -37,11 +45,11 @@ function AppContent({ client }: AppProps) {
           isUnread: (item.unreadCount || 0) > 0,
           normalizedName: (item.name || item.id).toLowerCase(),
         }));
-        dispatch({ type: 'CHATS_LOADED', payload: chats });
+        dispatch({ type: "CHATS_LOADED", payload: chats });
       } catch (error) {
-        console.error('Failed to load chats:', error);
+        console.error("Failed to load chats:", error);
       } finally {
-        dispatch({ type: 'LOADING_END', payload: 'chats' });
+        dispatch({ type: "LOADING_END", payload: "chats" });
       }
     };
 
@@ -54,9 +62,9 @@ function AppContent({ client }: AppProps) {
       if (!state.active.chat) return;
 
       const currentChat = state.chats[state.active.chat];
-      if (!currentChat || currentChat.type === 'dm') return; // DMs don't have threads
+      if (!currentChat || currentChat.type === "dm") return; // DMs don't have threads
 
-      dispatch({ type: 'LOADING_START', payload: 'threads' });
+      dispatch({ type: "LOADING_START", payload: "threads" });
       try {
         const result = await client.getThreads(state.active.chat);
         const threads = (result.topics || []).map((topic: any) => ({
@@ -64,7 +72,7 @@ function AppContent({ client }: AppProps) {
           isUnread: false, // TODO: Determine from API data
         }));
         dispatch({
-          type: 'THREADS_LOADED',
+          type: "THREADS_LOADED",
           payload: {
             chatId: state.active.chat,
             threads,
@@ -72,9 +80,9 @@ function AppContent({ client }: AppProps) {
           },
         });
       } catch (error) {
-        console.error('Failed to load threads:', error);
+        console.error("Failed to load threads:", error);
       } finally {
-        dispatch({ type: 'LOADING_END', payload: 'threads' });
+        dispatch({ type: "LOADING_END", payload: "threads" });
       }
     };
 
@@ -89,16 +97,16 @@ function AppContent({ client }: AppProps) {
       const currentChat = state.chats[state.active.chat];
       if (!currentChat) return;
 
-      dispatch({ type: 'LOADING_START', payload: 'messages' });
+      dispatch({ type: "LOADING_START", payload: "messages" });
       try {
-        if (currentChat.type === 'dm') {
+        if (currentChat.type === "dm") {
           // For DMs, load all messages directly
           const result = await client.getAllMessages(state.active.chat);
           dispatch({
-            type: 'MESSAGES_LOADED',
+            type: "MESSAGES_LOADED",
             payload: {
               chatId: state.active.chat,
-              threadId: 'dm', // Special ID for DM messages
+              threadId: "dm", // Special ID for DM messages
               messages: result.messages || [],
             },
           });
@@ -106,10 +114,10 @@ function AppContent({ client }: AppProps) {
           // For spaces, load messages for the selected thread
           const result = await client.getThreadMessages(
             state.active.chat,
-            state.active.thread
+            state.active.thread,
           );
           dispatch({
-            type: 'MESSAGES_LOADED',
+            type: "MESSAGES_LOADED",
             payload: {
               chatId: state.active.chat,
               threadId: state.active.thread,
@@ -118,9 +126,9 @@ function AppContent({ client }: AppProps) {
           });
         }
       } catch (error) {
-        console.error('Failed to load messages:', error);
+        console.error("Failed to load messages:", error);
       } finally {
-        dispatch({ type: 'LOADING_END', payload: 'messages' });
+        dispatch({ type: "LOADING_END", payload: "messages" });
       }
     };
 
@@ -144,7 +152,7 @@ function AppContent({ client }: AppProps) {
         <ChatsPanel />
 
         {/* Right Side - Threads, Messages, Input */}
-        <Box flexDirection="column" width="75%">
+        <Box flexDirection="column" width="75%" flexGrow={1}>
           <ThreadsPanel />
           <MessagesPanel />
           <InputBox client={client} />
