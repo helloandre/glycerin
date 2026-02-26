@@ -136,9 +136,15 @@ function AppContent({ client }: AppProps) {
   }, [state.active.chat, state.active.thread, state.chats, client, dispatch]);
 
   return (
-    <Box flexDirection="column" height="100%">
+    <Box flexDirection="column" minHeight={0}>
       {/* Title Bar */}
-      <Box borderStyle="single" borderColor="cyan" paddingX={1}>
+      <Box
+        borderStyle="single"
+        borderColor="cyan"
+        paddingX={1}
+        flexShrink={0}
+        minHeight={0}
+      >
         <Text bold color="cyan">
           Glycerin - Google Chat TUI
         </Text>
@@ -147,7 +153,7 @@ function AppContent({ client }: AppProps) {
       </Box>
 
       {/* Main Content Area */}
-      <Box flexGrow={1}>
+      <Box flexGrow={1} minHeight={0} overflow="hidden">
         {/* Left Sidebar - Chats */}
         <ChatsPanel />
 
@@ -160,7 +166,7 @@ function AppContent({ client }: AppProps) {
       </Box>
 
       {/* Status Bar / Loading Indicator */}
-      <Box borderStyle="single" borderColor="gray" paddingX={1}>
+      <Box borderStyle="single" borderColor="gray" paddingX={1} flexShrink={0}>
         <LoadingIndicator loadingKey="chats" message="Loading chats..." />
         <LoadingIndicator loadingKey="threads" message="Loading threads..." />
         <LoadingIndicator loadingKey="messages" message="Loading messages..." />
