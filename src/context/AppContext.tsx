@@ -4,7 +4,11 @@
 
 import type React from 'react';
 import { createContext, type ReactNode, useContext, useReducer } from 'react';
+import { loadPreferences, savePreferences } from '../lib/storage.js';
 import type { AppAction, AppState, Chat, Thread } from '../types/index.js';
+
+// Load saved preferences
+const savedPreferences = loadPreferences();
 
 // Initial state
 const initialState: AppState = {
@@ -25,9 +29,9 @@ const initialState: AppState = {
   focused: 'chats',
   loading: {},
   chatSearchTrigger: 0,
-  chatDisplayMode: 'home',
-  showOnlyUnread: true,
-  showMuted: false,
+  chatDisplayMode: savedPreferences.chatDisplayMode,
+  showOnlyUnread: savedPreferences.showOnlyUnread,
+  showMuted: savedPreferences.showMuted,
   confirmationModal: null,
 };
 
@@ -134,8 +138,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
-    case 'MESSAGE_RECEIVED': {
-      // Handle real-time message updates
+    case 'MESSAGE_RECEIVED':
+    case 'MESSAGE_SENT': {
+      // Handle real-time message updates and sent messages
       const msg = action.payload;
       if (!msg || !msg.space_id) {
         return state; // Ignore invalid messages
@@ -147,11 +152,21 @@ function appReducer(state: AppState, action: AppAction): AppState {
       // Update the messages in the appropriate thread
       if (state.threads[chatId]?.[threadId]) {
         const thread = state.threads[chatId][threadId];
+
+        // Check if this message already exists (avoid duplicates for MESSAGE_SENT)
+        const messageExists = thread.replies?.some(
+          m => m.message_id && m.message_id === msg.message_id
+        );
+
         const updatedThread = {
           ...thread,
-          replies: [...(thread.replies || []), msg],
-          message_count: (thread.message_count || 0) + 1,
-          isUnread: true,
+          replies: messageExists
+            ? thread.replies
+            : [...(thread.replies || []), msg],
+          message_count: messageExists
+            ? thread.message_count
+            : (thread.message_count || 0) + 1,
+          isUnread: action.type === 'MESSAGE_RECEIVED', // Only mark unread for received messages
         };
 
         return {
@@ -163,26 +178,30 @@ function appReducer(state: AppState, action: AppAction): AppState {
               [threadId]: updatedThread,
             },
           },
-          // Update chat unread status and sort timestamp if not currently active
+          // Update chat sort timestamp
           chats: {
             ...state.chats,
             [chatId]: {
               ...state.chats[chatId],
-              isUnread: state.active.chat !== chatId,
+              isUnread:
+                action.type === 'MESSAGE_RECEIVED' &&
+                state.active.chat !== chatId,
               sortTimestamp: Date.now(),
             },
           },
         };
       }
 
-      // If thread doesn't exist in state yet, just mark chat as unread and update sort timestamp
+      // If thread doesn't exist in state yet, just update chat sort timestamp
       return {
         ...state,
         chats: {
           ...state.chats,
           [chatId]: {
             ...state.chats[chatId],
-            isUnread: state.active.chat !== chatId,
+            isUnread:
+              action.type === 'MESSAGE_RECEIVED' &&
+              state.active.chat !== chatId,
             sortTimestamp: Date.now(),
           },
         },
@@ -288,23 +307,44 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
-    case 'CHAT_DISPLAY_MODE_CHANGED':
-      return {
+    case 'CHAT_DISPLAY_MODE_CHANGED': {
+      const newState = {
         ...state,
         chatDisplayMode: action.payload,
       };
+      savePreferences({
+        chatDisplayMode: newState.chatDisplayMode,
+        showOnlyUnread: newState.showOnlyUnread,
+        showMuted: newState.showMuted,
+      });
+      return newState;
+    }
 
-    case 'SHOW_ONLY_UNREAD_TOGGLED':
-      return {
+    case 'SHOW_ONLY_UNREAD_TOGGLED': {
+      const newState = {
         ...state,
         showOnlyUnread: !state.showOnlyUnread,
       };
+      savePreferences({
+        chatDisplayMode: newState.chatDisplayMode,
+        showOnlyUnread: newState.showOnlyUnread,
+        showMuted: newState.showMuted,
+      });
+      return newState;
+    }
 
-    case 'SHOW_MUTED_TOGGLED':
-      return {
+    case 'SHOW_MUTED_TOGGLED': {
+      const newState = {
         ...state,
         showMuted: !state.showMuted,
       };
+      savePreferences({
+        chatDisplayMode: newState.chatDisplayMode,
+        showOnlyUnread: newState.showOnlyUnread,
+        showMuted: newState.showMuted,
+      });
+      return newState;
+    }
 
     case 'CHAT_MUTE_TOGGLED': {
       const chat = state.chats[action.payload.chatId];

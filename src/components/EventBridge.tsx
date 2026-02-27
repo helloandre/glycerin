@@ -30,19 +30,37 @@ export function EventBridge({ client }: EventBridgeProps) {
 
     const handleEvent = (event: any) => {
       // Log events for debugging
-      // console.log('Event received:', event.type, event);
+      logger.debug('Event received:', event.type);
 
       // Map google-chat-api events to our state actions
       switch (event.type) {
-        case 'message':
-          // New message received
-          if (event.message) {
+        case 'message': {
+          // New message received from WebChannel
+          // event.event is the ChannelEvent which contains body.message
+          const channelEvent = event.event;
+          if (channelEvent?.body?.message) {
+            const msg = channelEvent.body.message;
+            const groupId = channelEvent.groupId;
+
+            // Convert ChannelEvent message to our Message format
+            const message = {
+              message_id: msg.id,
+              space_id: groupId?.id || '',
+              topic_id: msg.topic_id || (groupId?.type === 'dm' ? 'dm' : ''),
+              text: msg.text || '',
+              timestamp: msg.timestamp || new Date().toISOString(),
+              sender: msg.creator?.name || '',
+              sender_id: msg.creator?.id || '',
+              sender_email: msg.creator?.email || '',
+            };
+
             dispatch({
               type: 'MESSAGE_RECEIVED',
-              payload: event.message,
+              payload: message,
             });
           }
           break;
+        }
 
         case 'thread_updated':
           // Thread was updated (new message in thread)

@@ -55,10 +55,11 @@ export function MessagesPanel() {
   );
   const viewportHeight = Math.max(3, Math.floor(availableLines / 3));
 
-  // Auto-scroll to bottom when new messages arrive (start at offset 0 since messages are reversed)
+  // Auto-scroll to bottom when thread changes or new messages arrive
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll when currentThread changes
   useEffect(() => {
     setScrollOffset(0);
-  }, [messages.length]);
+  }, [currentThread]);
 
   // Keyboard handlers for scrolling
   useKeyHandler(

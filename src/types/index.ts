@@ -123,6 +123,7 @@ export type AppAction =
       payload: { chatId: string; threadId: string; messages: Message[] };
     }
   | { type: 'MESSAGE_RECEIVED'; payload: Message }
+  | { type: 'MESSAGE_SENT'; payload: Message }
   | { type: 'SEARCH_OPENED'; payload: SearchMode }
   | { type: 'SEARCH_CLOSED' }
   | { type: 'SEARCH_RESULTS'; payload: Chat[] }
