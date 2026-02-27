@@ -48,7 +48,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node dist/index.js",
+    "start": "npm run build && node dist/src/index.js",
     "dev": "ts-node --esm src/index.ts",
     "debug": "node --inspect-brk -r ts-node/register src/index.ts",
     "ev": "ts-node src/index.ts -e",
