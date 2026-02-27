@@ -3,19 +3,19 @@
  * Layout and orchestration of all UI components
  */
 
-import { Box, Text, useApp, useStdout } from "ink";
-import { useEffect } from "react";
-import { AppStateProvider, useAppState } from "../context/AppContext.js";
-import { useKeyHandler } from "../hooks/useKeyHandler.js";
-import type { GlycerinChatClient } from "../lib/chat-client.js";
-import { logger } from "../lib/logger.js";
-import type { Chat } from "../types/index.js";
-import { ChatsPanel } from "./ChatsPanel.js";
-import { EventBridge } from "./EventBridge.js";
-import { InputBox } from "./InputBox.js";
-import { LoadingIndicator } from "./LoadingIndicator.js";
-import { MessagesPanel } from "./MessagesPanel.js";
-import { ThreadsPanel } from "./ThreadsPanel.js";
+import { Box, Text, useApp, useStdout } from 'ink';
+import { useEffect } from 'react';
+import { AppStateProvider, useAppState } from '../context/AppContext.js';
+import { useKeyHandler } from '../hooks/useKeyHandler.js';
+import type { GlycerinChatClient } from '../lib/chat-client.js';
+import { logger } from '../lib/logger.js';
+import type { Chat } from '../types/index.js';
+import { ChatsPanel } from './ChatsPanel.js';
+import { EventBridge } from './EventBridge.js';
+import { InputBox } from './InputBox.js';
+import { LoadingIndicator } from './LoadingIndicator.js';
+import { MessagesPanel } from './MessagesPanel.js';
+import { ThreadsPanel } from './ThreadsPanel.js';
 
 interface AppProps {
   client: GlycerinChatClient;
@@ -26,16 +26,20 @@ function AppContent({ client }: AppProps) {
   const { stdout } = useStdout();
   const { exit } = useApp();
 
-  // Global hotkeys (work regardless of focus)
+  // Global hotkeys (work regardless of focus, except when input is focused)
   useKeyHandler(
     {
-      "ctrl+c": () => exit(),
-      "ctrl+f": () => {
+      'ctrl+c': () => exit(),
+      'ctrl+f': () => {
         // TODO: Implement search modal
-        logger.info("Search not yet implemented");
+        logger.info('Search not yet implemented');
+      },
+      '/': () => {
+        // Open chat search/filter mode
+        dispatch({ type: 'CHAT_SEARCH_OPENED' });
       },
     },
-    { enabled: true },
+    { enabled: state.focused !== 'input' }
   );
 
   // Log terminal dimensions for debugging (can be removed after testing)
@@ -50,7 +54,7 @@ function AppContent({ client }: AppProps) {
     const pagination = state.threadsPagination[chatId];
     if (!pagination?.hasMore || !pagination.cursor) return;
 
-    dispatch({ type: "LOADING_START", payload: "threads" });
+    dispatch({ type: 'LOADING_START', payload: 'threads' });
     try {
       const result = await client.getThreads(chatId, {
         pageSize: 25,
@@ -61,7 +65,7 @@ function AppContent({ client }: AppProps) {
         isUnread: false, // TODO: Determine from API data
       }));
       dispatch({
-        type: "THREADS_LOADED",
+        type: 'THREADS_LOADED',
         payload: {
           chatId,
           threads,
@@ -71,16 +75,16 @@ function AppContent({ client }: AppProps) {
         },
       });
     } catch (error) {
-      logger.error("Failed to load more threads", error);
+      logger.error('Failed to load more threads', error);
     } finally {
-      dispatch({ type: "LOADING_END", payload: "threads" });
+      dispatch({ type: 'LOADING_END', payload: 'threads' });
     }
   };
 
   // Load chats on mount
   useEffect(() => {
     const loadChats = async () => {
-      dispatch({ type: "LOADING_START", payload: "chats" });
+      dispatch({ type: 'LOADING_START', payload: 'chats' });
       try {
         // Use listWorldItems which includes unread counts
         const worldItems = await client.getChatsWithUnread();
@@ -92,11 +96,11 @@ function AppContent({ client }: AppProps) {
           isUnread: (item.unreadCount || 0) > 0,
           normalizedName: (item.name || item.id).toLowerCase(),
         }));
-        dispatch({ type: "CHATS_LOADED", payload: chats });
+        dispatch({ type: 'CHATS_LOADED', payload: chats });
       } catch (error) {
-        logger.error("Failed to load chats", error);
+        logger.error('Failed to load chats', error);
       } finally {
-        dispatch({ type: "LOADING_END", payload: "chats" });
+        dispatch({ type: 'LOADING_END', payload: 'chats' });
       }
     };
 
@@ -109,9 +113,9 @@ function AppContent({ client }: AppProps) {
       if (!state.active.chat) return;
 
       const currentChat = state.chats[state.active.chat];
-      if (!currentChat || currentChat.type === "dm") return; // DMs don't have threads
+      if (!currentChat || currentChat.type === 'dm') return; // DMs don't have threads
 
-      dispatch({ type: "LOADING_START", payload: "threads" });
+      dispatch({ type: 'LOADING_START', payload: 'threads' });
       try {
         const result = await client.getThreads(state.active.chat, {
           pageSize: 25,
@@ -121,7 +125,7 @@ function AppContent({ client }: AppProps) {
           isUnread: false, // TODO: Determine from API data
         }));
         dispatch({
-          type: "THREADS_LOADED",
+          type: 'THREADS_LOADED',
           payload: {
             chatId: state.active.chat,
             threads,
@@ -131,9 +135,9 @@ function AppContent({ client }: AppProps) {
           },
         });
       } catch (error) {
-        logger.error("Failed to load threads", error);
+        logger.error('Failed to load threads', error);
       } finally {
-        dispatch({ type: "LOADING_END", payload: "threads" });
+        dispatch({ type: 'LOADING_END', payload: 'threads' });
       }
     };
 
@@ -148,16 +152,16 @@ function AppContent({ client }: AppProps) {
       const currentChat = state.chats[state.active.chat];
       if (!currentChat) return;
 
-      dispatch({ type: "LOADING_START", payload: "messages" });
+      dispatch({ type: 'LOADING_START', payload: 'messages' });
       try {
-        if (currentChat.type === "dm") {
+        if (currentChat.type === 'dm') {
           // For DMs, load all messages directly
           const result = await client.getAllMessages(state.active.chat);
           dispatch({
-            type: "MESSAGES_LOADED",
+            type: 'MESSAGES_LOADED',
             payload: {
               chatId: state.active.chat,
-              threadId: "dm", // Special ID for DM messages
+              threadId: 'dm', // Special ID for DM messages
               messages: result.messages || [],
             },
           });
@@ -165,10 +169,10 @@ function AppContent({ client }: AppProps) {
           // For spaces, load messages for the selected thread
           const result = await client.getThreadMessages(
             state.active.chat,
-            state.active.thread,
+            state.active.thread
           );
           dispatch({
-            type: "MESSAGES_LOADED",
+            type: 'MESSAGES_LOADED',
             payload: {
               chatId: state.active.chat,
               threadId: state.active.thread,
@@ -177,9 +181,9 @@ function AppContent({ client }: AppProps) {
           });
         }
       } catch (error) {
-        logger.error("Failed to load messages", error);
+        logger.error('Failed to load messages', error);
       } finally {
-        dispatch({ type: "LOADING_END", payload: "messages" });
+        dispatch({ type: 'LOADING_END', payload: 'messages' });
       }
     };
 
@@ -202,7 +206,7 @@ function AppContent({ client }: AppProps) {
             Glycerin - Google Chat TUI
           </Text>
           <Text color="gray"> | </Text>
-          <Text color="gray">Ctrl+C: Quit | Ctrl+F: Search</Text>
+          <Text color="gray">Ctrl+C: Quit | /: Filter Chats</Text>
         </Box>
         <Box>
           <LoadingIndicator loadingKey="chats" message="Loading chats..." />

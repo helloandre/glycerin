@@ -78,6 +78,7 @@ export interface AppState {
   // UI state
   focused: FocusTarget;
   loading: Record<string, boolean>;
+  chatSearchTrigger: number; // Timestamp to trigger chat search mode
 }
 
 // Action types for state reducer
@@ -103,6 +104,7 @@ export type AppAction =
   | { type: 'SEARCH_OPENED'; payload: SearchMode }
   | { type: 'SEARCH_CLOSED' }
   | { type: 'SEARCH_RESULTS'; payload: Chat[] }
+  | { type: 'CHAT_SEARCH_OPENED' }
   | { type: 'FOCUS_CHANGED'; payload: FocusTarget }
   | { type: 'MARK_READ'; payload: { chatId: string; threadId?: string } }
   | { type: 'LOADING_START'; payload: string }

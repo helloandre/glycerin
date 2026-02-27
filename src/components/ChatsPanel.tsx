@@ -22,7 +22,7 @@ type PanelMode = 'normal' | 'search' | 'browse';
 export function ChatsPanel() {
   const chats = useChats();
   const currentChat = useCurrentChat();
-  const { dispatch } = useAppState();
+  const { state, dispatch } = useAppState();
   const { isFocused } = useFocus('chats');
   const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -41,8 +41,15 @@ export function ChatsPanel() {
         )
       : chats;
 
+  // Filter browse rooms based on search query
+  const filteredBrowseRooms = browseRooms.filter(
+    room =>
+      room.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      room.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Use browse rooms or filtered chats depending on mode
-  const displayItems = mode === 'browse' ? browseRooms : filteredChats;
+  const displayItems = mode === 'browse' ? filteredBrowseRooms : filteredChats;
 
   // Calculate viewport height based on terminal height
   //
@@ -50,14 +57,13 @@ export function ChatsPanel() {
   // - Title bar: 3 lines (1 text + 2 borders)
   // - ChatsPanel chrome:
   //   - Top border: 1 line
-  //   - Header "Rooms & DMs" or search input: 1 line
+  //   - Header input box: 1 line
   //   - Header margin: 1 line
-  //   - Footer help (when focused): 3 lines (2 borders + 1 text)
-  //   - Bottom border: 1 line (shared with footer if focused, else separate)
+  //   - Bottom border: 1 line
   //
-  // Total overhead: 3 (title) + 2 (borders) + 2 (header) + footer (3 if focused, 0 if not)
+  // Total overhead: 3 (title) + 2 (borders) + 2 (header)
   const titleBarHeight = 3;
-  const chatsPanelChrome = isFocused ? 7 : 4; // borders + header + footer
+  const chatsPanelChrome = 4; // borders + header
   const availableHeight = stdout.rows - titleBarHeight - chatsPanelChrome;
   const viewportHeight = Math.max(5, availableHeight);
 
@@ -67,11 +73,13 @@ export function ChatsPanel() {
     setScrollOffset(0);
     if (mode === 'search') {
       setSearchQuery('');
-    } else if (mode === 'browse' && browseRooms.length === 0) {
-      // Fetch all rooms for browsing
+    } else if (mode === 'browse') {
+      // Always show loading state and fetch rooms when entering browse mode
+      setSearchQuery('');
       setLoadingRooms(true);
+      // Fetch all available rooms (not just ones we're a member of)
       getChatClient()
-        .getChats()
+        .findSpaces('') // Empty query returns all spaces
         .then(rooms => {
           setBrowseRooms(rooms);
           setLoadingRooms(false);
@@ -82,6 +90,13 @@ export function ChatsPanel() {
         });
     }
   }, [mode]);
+
+  // Listen for global chat search trigger
+  useEffect(() => {
+    if (state.chatSearchTrigger > 0 && mode !== 'search') {
+      setMode('search');
+    }
+  }, [state.chatSearchTrigger]);
 
   // Update selected index when current chat changes (only in normal mode)
   useEffect(() => {
@@ -104,16 +119,21 @@ export function ChatsPanel() {
     }
   }, [selectedIndex, viewportHeight, scrollOffset]);
 
-  // Handle search input
+  // Handle search/browse input
   useInput((input, key) => {
-    if (!isFocused || mode !== 'search') return;
+    if (!isFocused || (mode !== 'search' && mode !== 'browse')) return;
 
     if (key.return) {
-      // Exit search mode on Enter
-      setMode('normal');
-      setSearchQuery('');
+      if (mode === 'browse') {
+        // In browse mode, Enter selects/joins
+        handleSelect();
+      } else {
+        // Exit search mode on Enter
+        setMode('normal');
+        setSearchQuery('');
+      }
     } else if (key.escape) {
-      // Exit search mode on Escape
+      // Exit search/browse mode on Escape
       setMode('normal');
       setSearchQuery('');
     } else if (key.backspace || key.delete) {
@@ -123,7 +143,7 @@ export function ChatsPanel() {
     }
   });
 
-  // Keyboard handlers for navigation (normal and browse modes)
+  // Keyboard handlers for navigation (normal mode only, not when typing in search/browse)
   useKeyHandler(
     {
       j: () => handleDown(),
@@ -144,22 +164,16 @@ export function ChatsPanel() {
         } else if (mode === 'browse') {
           // Exit browse mode
           setMode('normal');
-          setPreviewedRoom(null);
-        }
-      },
-      'ctrl+j': () => {
-        if (mode === 'browse' && !previewedRoom) {
-          handleJoinRoom();
         }
       },
       escape: () => {
         if (mode === 'browse' || mode === 'search') {
           setMode('normal');
-          setPreviewedRoom(null);
+          setSearchQuery('');
         }
       },
     },
-    { enabled: isFocused && mode !== 'search' }
+    { enabled: isFocused && mode === 'normal' }
   );
 
   const handleDown = () => {
@@ -172,13 +186,13 @@ export function ChatsPanel() {
 
   const handleSelect = () => {
     if (mode === 'browse') {
-      const room = browseRooms[selectedIndex];
+      const room = filteredBrowseRooms[selectedIndex];
       if (room) {
         if (previewedRoom?.id === room.id) {
-          // Join the room if already previewing
+          // Second Enter: Join the room
           handleJoinRoom();
         } else {
-          // Preview the room
+          // First Enter: Preview the room
           setPreviewedRoom(room);
           // Load threads for preview
           dispatch({
@@ -204,7 +218,7 @@ export function ChatsPanel() {
   };
 
   const handleJoinRoom = () => {
-    const room = previewedRoom || browseRooms[selectedIndex];
+    const room = previewedRoom || filteredBrowseRooms[selectedIndex];
     if (!room) return;
 
     // Add to chats list by selecting it
@@ -216,6 +230,7 @@ export function ChatsPanel() {
     dispatch({ type: 'CHAT_SELECTED', payload: newChat });
     // Exit browse mode
     setMode('normal');
+    setSearchQuery('');
     setPreviewedRoom(null);
   };
 
@@ -226,13 +241,12 @@ export function ChatsPanel() {
 
     // Different color scheme for browse mode
     const isBrowse = mode === 'browse';
-    const isPreviewed = isBrowse && previewedRoom?.id === chat.id;
 
-    // Determine colors
+    // Determine colors - browse mode uses magenta, normal/search uses cyan
     let color = 'white';
     if (isBrowse) {
       if (isFocused) {
-        color = isPreviewed ? 'yellow' : isSelected ? 'magenta' : 'white';
+        color = isSelected ? 'magenta' : 'white';
       } else {
         color = 'gray';
       }
@@ -254,7 +268,6 @@ export function ChatsPanel() {
     const unreadIndicator = chat.isUnread ? '● ' : '  ';
     const typeIndicator = chat.type === 'dm' ? '👤 ' : '# ';
     const selectionIndicator = isSelected ? '❯ ' : '  ';
-    const previewIndicator = isPreviewed ? '👁 ' : '';
 
     return (
       <Box key={chat.id}>
@@ -262,7 +275,6 @@ export function ChatsPanel() {
           {selectionIndicator}
           {!isBrowse && unreadIndicator}
           {!isBrowse && typeIndicator}
-          {previewIndicator}
           {displayName}
         </Text>
       </Box>
@@ -283,13 +295,19 @@ export function ChatsPanel() {
     borderColor = 'magenta';
   }
 
-  // Determine header text and color
-  let headerText = 'Rooms & DMs';
-  let headerColor = isFocused ? 'cyan' : 'gray';
+  // Determine placeholder text and color for input box
+  let placeholderText = 'Rooms & DMs';
+  let inputColor = isFocused ? 'cyan' : 'gray';
   if (mode === 'browse') {
-    headerText = 'Browse Rooms';
-    headerColor = isFocused ? 'magenta' : 'gray';
+    placeholderText = 'Browse Rooms';
+    inputColor = isFocused ? 'magenta' : 'gray';
+  } else if (mode === 'search') {
+    placeholderText = 'Search';
   }
+
+  // Display text in input box
+  const displayText =
+    mode === 'search' || mode === 'browse' ? searchQuery : placeholderText;
 
   return (
     <Box
@@ -301,19 +319,11 @@ export function ChatsPanel() {
       borderColor={borderColor}
       paddingX={1}
     >
-      {mode === 'search' ? (
-        <Box marginBottom={1}>
-          <Text bold color={isFocused ? 'cyan' : 'gray'}>
-            Search: {searchQuery}
-          </Text>
-        </Box>
-      ) : (
-        <Box marginBottom={1}>
-          <Text bold color={headerColor}>
-            {headerText}
-          </Text>
-        </Box>
-      )}
+      <Box marginBottom={1}>
+        <Text bold color={inputColor}>
+          {displayText}
+        </Text>
+      </Box>
 
       <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
         {loadingRooms ? (
@@ -346,18 +356,6 @@ export function ChatsPanel() {
           </>
         )}
       </Box>
-
-      {isFocused && (
-        <Box borderStyle="single" borderColor="gray" marginTop={1} paddingX={1}>
-          {mode === 'browse' ? (
-            <Text dimColor>⏎:preview/join ^J:join ^B:exit ESC:exit</Text>
-          ) : mode === 'search' ? (
-            <Text dimColor>type to search ⏎/ESC:exit</Text>
-          ) : (
-            <Text dimColor>↑↓:nav ⏎:select ^F:search ^B:browse</Text>
-          )}
-        </Box>
-      )}
     </Box>
   );
 }

@@ -24,6 +24,7 @@ const initialState: AppState = {
   unread: [],
   focused: 'chats',
   loading: {},
+  chatSearchTrigger: 0,
 };
 
 // Reducer function
@@ -209,6 +210,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
           available: action.payload,
           loading: false,
         },
+      };
+
+    case 'CHAT_SEARCH_OPENED':
+      return {
+        ...state,
+        focused: 'chats',
+        chatSearchTrigger: Date.now(),
       };
 
     case 'FOCUS_CHANGED':
