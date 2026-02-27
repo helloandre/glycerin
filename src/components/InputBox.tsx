@@ -29,7 +29,7 @@ export function InputBox({ client }: InputBoxProps) {
 
   // Handle escape to go to messages (so user can scroll)
   useInput(
-    (input, key) => {
+    (_input, key) => {
       if (key.escape && isFocused) {
         dispatch({ type: 'FOCUS_CHANGED', payload: 'messages' });
       }

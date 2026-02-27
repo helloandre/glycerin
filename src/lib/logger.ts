@@ -9,9 +9,9 @@
  * Note: LOG_LEVEL env var is reserved by google-chat-api library
  */
 
-import fs from 'fs';
-import { homedir } from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import { homedir } from 'node:os';
+import path from 'node:path';
 
 const LOG_DIR = path.join(homedir(), '.glycerin');
 const LOG_FILE = path.join(LOG_DIR, 'glycerin.log');
@@ -21,7 +21,7 @@ try {
   if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
   }
-} catch (error) {
+} catch {
   // Silently fail if we can't create the directory
 }
 
@@ -89,13 +89,13 @@ class Logger {
       }
     }
 
-    return formatted + '\n';
+    return `${formatted}\n`;
   }
 
   private writeToFile(message: string): void {
     try {
       fs.appendFileSync(LOG_FILE, message, 'utf8');
-    } catch (error) {
+    } catch {
       // Silently fail if we can't write to the log file
     }
   }

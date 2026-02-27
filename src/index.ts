@@ -61,7 +61,10 @@ async function main() {
     await waitUntilExit();
     process.exit(0);
   } catch (error) {
-    console.error('Failed to start Glycerin:', error.message);
+    console.error(
+      'Failed to start Glycerin:',
+      error instanceof Error ? error.message : String(error)
+    );
     console.error('\nTroubleshooting:');
     console.error(
       '  1. Complete the Google Chat login in the Playwright browser window'

@@ -234,7 +234,9 @@ function AppContent({ client }: AppProps) {
             loadingKey="messages"
             message="Loading messages..."
           />
-          {!state.loading && <Text color="green">✓ Ready</Text>}
+          {Object.keys(state.loading).length === 0 && (
+            <Text color="green">✓ Ready</Text>
+          )}
         </Box>
       </Box>
 
@@ -245,7 +247,7 @@ function AppContent({ client }: AppProps) {
 
         {/* Right Side - Threads, Messages, Input */}
         <Box flexDirection="column" width="75%" flexGrow={1} minHeight={0}>
-          <ThreadsPanel client={client} onLoadMore={loadMoreThreads} />
+          <ThreadsPanel onLoadMore={loadMoreThreads} />
           <MessagesPanel />
           <InputBox client={client} />
         </Box>

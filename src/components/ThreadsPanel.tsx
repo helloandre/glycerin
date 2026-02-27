@@ -5,7 +5,7 @@
  */
 
 import { Box, Text, useStdout } from 'ink';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   useAppState,
   useCurrentChat,
@@ -16,15 +16,13 @@ import {
 } from '../context/AppContext.js';
 import { useFocus } from '../hooks/useFocus.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
-import type { GlycerinChatClient } from '../lib/chat-client.js';
 import type { Thread } from '../types/index.js';
 
 interface ThreadsPanelProps {
-  client: GlycerinChatClient;
   onLoadMore: (chatId: string) => Promise<void>;
 }
 
-export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
+export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
   const threads = useThreads();
   const currentThread = useCurrentThread();
   const currentChat = useCurrentChat();
@@ -36,7 +34,7 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
   const [scrollOffset, setScrollOffset] = useState(0);
 
   // Reverse threads so most recent is at the bottom
-  const reversedThreads = [...threads].reverse();
+  const reversedThreads = useMemo(() => [...threads].reverse(), [threads]);
 
   // Dynamic viewport height based on terminal size
   // ThreadsPanel takes 30% of available space
@@ -74,7 +72,7 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
       // Scroll down
       setScrollOffset(selectedIndex - viewportHeight + 1);
     }
-  }, [selectedIndex, scrollOffset]);
+  }, [selectedIndex, scrollOffset, viewportHeight]);
 
   // Function to load more threads
   const handleLoadMore = async () => {
@@ -152,7 +150,6 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
     availableWidth: number
   ) => {
     const isSelected = index === selectedIndex;
-    const _isCurrent = currentThread?.topic_id === thread.topic_id;
 
     // Determine colors
     let color = 'white';

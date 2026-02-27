@@ -26,7 +26,10 @@ export class GlycerinChatClient {
   async init(cookies?: Record<string, string>): Promise<void> {
     if (!cookies) {
       // Try to load from cache
-      cookies = loadCachedCookies(this.cacheDir);
+      const cached = loadCachedCookies(this.cacheDir);
+      if (cached) {
+        cookies = cached;
+      }
     }
 
     if (!cookies || Object.keys(cookies).length === 0) {
@@ -191,7 +194,7 @@ export class GlycerinChatClient {
   /**
    * Leave a space
    */
-  async leaveSpace(spaceId: string): Promise<boolean> {
+  async leaveSpace(_spaceId: string): Promise<boolean> {
     this.ensureInitialized();
     // TODO: Implement actual API call when available in google-chat-api
     // For now, this is a placeholder that returns success

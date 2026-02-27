@@ -241,19 +241,30 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
 
     case 'MARK_READ': {
-      const chat = state.chats[action.payload.chatId];
-      if (chat) {
-        chat.isUnread = false;
+      const updatedChats = { ...state.chats };
+      if (updatedChats[action.payload.chatId]) {
+        updatedChats[action.payload.chatId] = {
+          ...updatedChats[action.payload.chatId],
+          isUnread: false,
+        };
       }
-      if (action.payload.threadId && state.threads[action.payload.chatId]) {
+
+      const updatedThreads = { ...state.threads };
+      if (action.payload.threadId && updatedThreads[action.payload.chatId]) {
         const thread =
-          state.threads[action.payload.chatId][action.payload.threadId];
+          updatedThreads[action.payload.chatId][action.payload.threadId];
         if (thread) {
-          thread.isUnread = false;
+          updatedThreads[action.payload.chatId] = {
+            ...updatedThreads[action.payload.chatId],
+            [action.payload.threadId]: { ...thread, isUnread: false },
+          };
         }
       }
+
       return {
         ...state,
+        chats: updatedChats,
+        threads: updatedThreads,
         unread: state.unread.filter(c => c.id !== action.payload.chatId),
       };
     }
@@ -321,7 +332,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         confirmationModal: null,
-        focused: state.active.chat ? 'chats' : 'chats',
+        focused: 'chats',
       };
 
     case 'CHAT_LEFT': {

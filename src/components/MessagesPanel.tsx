@@ -24,7 +24,7 @@ export function MessagesPanel() {
   const [scrollOffset, setScrollOffset] = useState(0);
 
   // Get messages from current thread or chat
-  const messages = currentThread?.replies || [];
+  const messages: Message[] = currentThread?.replies || [];
 
   // Calculate viewport height dynamically
   // Each message takes ~3 lines (sender+time line, text line, margin line)

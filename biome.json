@@ -14,11 +14,7 @@
       "!**/build",
       "!**/coverage",
       "!**/.git",
-      "!**/src/lib/api",
-      "!**/src/lib/model",
-      "!**/src/lib/eventemitter.js",
-      "!**/src/screens",
-      "!**/index.js"
+      "!**/vendor"
     ]
   },
   "formatter": {

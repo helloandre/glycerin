@@ -10,7 +10,6 @@ import * as path from 'node:path';
 import { type Browser, type BrowserContext, chromium } from 'playwright';
 import {
   extractCookiesFromBrowser,
-  getProfile,
   listProfiles,
   loadCachedCookies,
   saveCachedCookies,
@@ -67,7 +66,7 @@ async function ensurePlaywrightBrowsers(): Promise<void> {
     logger.info('Browser installation complete');
   } catch (error) {
     throw new Error(
-      `Failed to install Playwright browsers: ${error.message}\nPlease run: npx playwright install chromium`
+      `Failed to install Playwright browsers: ${error instanceof Error ? error.message : String(error)}\nPlease run: npx playwright install chromium`
     );
   }
 }
@@ -178,7 +177,7 @@ export async function initAuth(
   if (!options.forceReauth) {
     try {
       const cached = loadCachedCookies(cacheDir);
-      if (hasRequiredCookies(cached)) {
+      if (cached && hasRequiredCookies(cached)) {
         logger.info('Using cached authentication');
         return cached;
       }
@@ -222,7 +221,9 @@ export async function initAuth(
         return cookies;
       }
     } catch (error) {
-      logger.warn(`Could not extract cookies from browser: ${error.message}`);
+      logger.warn(
+        `Could not extract cookies from browser: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -248,7 +249,6 @@ export async function initAuth(
  * Clear cached authentication
  */
 export function clearAuth(cacheDir: string = DEFAULT_CACHE_DIR): void {
-  const fs = require('node:fs');
   const cookiePath = path.join(cacheDir, 'cookies.json');
 
   try {
@@ -267,7 +267,7 @@ export function clearAuth(cacheDir: string = DEFAULT_CACHE_DIR): void {
 export function hasValidAuth(cacheDir: string = DEFAULT_CACHE_DIR): boolean {
   try {
     const cookies = loadCachedCookies(cacheDir);
-    return cookies && Object.keys(cookies).length > 0;
+    return cookies !== null && Object.keys(cookies).length > 0;
   } catch {
     return false;
   }

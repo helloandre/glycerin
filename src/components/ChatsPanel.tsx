@@ -5,7 +5,7 @@
  */
 
 import { Box, Text, useInput, useStdout } from 'ink';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Space } from '../../vendor/google-chat-api/index.js';
 import {
   useAppState,
@@ -15,14 +15,9 @@ import {
 import { useFocus } from '../hooks/useFocus.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
 import { getChatClient } from '../lib/chat-client.js';
-import type { Chat, ChatDisplayMode } from '../types/index.js';
+import type { Chat } from '../types/index.js';
 
 type PanelMode = 'normal' | 'search' | 'browse';
-
-interface ChatSection {
-  title: string;
-  chats: Chat[];
-}
 
 export function ChatsPanel() {
   const chats = useChats();
@@ -84,41 +79,44 @@ export function ChatsPanel() {
   type DisplayItem =
     | { type: 'section'; title: string }
     | { type: 'chat'; chat: Chat | Space };
-  const displayItems: DisplayItem[] = [];
 
-  if (mode === 'browse') {
-    // Browse mode: show filtered rooms as chats
-    displayItems.push(
-      ...filteredBrowseRooms.map(room => ({
-        type: 'chat' as const,
-        chat: room,
-      }))
-    );
-  } else if (mode === 'normal' && displayMode === 'list') {
-    // List mode: group by sections
-    const dms = displayChats.filter(chat => chat.type === 'dm');
-    const spaces = displayChats.filter(chat => chat.type === 'space');
+  const displayItems = useMemo<DisplayItem[]>(() => {
+    const items: DisplayItem[] = [];
 
-    if (dms.length > 0) {
-      displayItems.push({ type: 'section', title: 'Direct Messages' });
-      displayItems.push(...dms.map(chat => ({ type: 'chat' as const, chat })));
-    }
+    if (mode === 'browse') {
+      // Browse mode: show filtered rooms as chats
+      items.push(
+        ...filteredBrowseRooms.map(room => ({
+          type: 'chat' as const,
+          chat: room,
+        }))
+      );
+    } else if (mode === 'normal' && displayMode === 'list') {
+      // List mode: group by sections
+      const dms = displayChats.filter(chat => chat.type === 'dm');
+      const spaces = displayChats.filter(chat => chat.type === 'space');
 
-    if (spaces.length > 0) {
-      displayItems.push({ type: 'section', title: 'Spaces' });
-      displayItems.push(
-        ...spaces.map(chat => ({ type: 'chat' as const, chat }))
+      if (dms.length > 0) {
+        items.push({ type: 'section', title: 'Direct Messages' });
+        items.push(...dms.map(chat => ({ type: 'chat' as const, chat })));
+      }
+
+      if (spaces.length > 0) {
+        items.push({ type: 'section', title: 'Spaces' });
+        items.push(...spaces.map(chat => ({ type: 'chat' as const, chat })));
+      }
+
+      // Apps section (placeholder for now)
+      items.push({ type: 'section', title: 'Apps' });
+    } else {
+      // Home or Mentions mode: flat list
+      items.push(
+        ...displayChats.map(chat => ({ type: 'chat' as const, chat }))
       );
     }
 
-    // Apps section (placeholder for now)
-    displayItems.push({ type: 'section', title: 'Apps' });
-  } else {
-    // Home or Mentions mode: flat list
-    displayItems.push(
-      ...displayChats.map(chat => ({ type: 'chat' as const, chat }))
-    );
-  }
+    return items;
+  }, [mode, displayMode, displayChats, filteredBrowseRooms]);
 
   // Calculate viewport height based on terminal height
   //
@@ -165,7 +163,7 @@ export function ChatsPanel() {
     if (state.chatSearchTrigger > 0 && mode !== 'search') {
       setMode('search');
     }
-  }, [state.chatSearchTrigger]);
+  }, [state.chatSearchTrigger, mode]);
 
   // Update selected index when current chat changes (only in normal mode)
   useEffect(() => {
@@ -497,7 +495,6 @@ export function ChatsPanel() {
 
     // Handle chat items
     const chat = item.chat as Chat;
-    const _isCurrent = currentChat?.id === chat.id;
 
     // Different color scheme for browse mode
     const isBrowse = mode === 'browse';
