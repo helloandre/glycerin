@@ -24,7 +24,8 @@ export function MessagesPanel() {
   const [scrollOffset, setScrollOffset] = useState(0);
 
   // Get messages from current thread or chat
-  const messages: Message[] = currentThread?.replies || [];
+  // Reverse the order so newest messages appear at the bottom (like normal chat apps)
+  const messages: Message[] = [...(currentThread?.replies || [])].reverse();
 
   // Calculate viewport height dynamically
   // Each message takes ~3 lines (sender+time line, text line, margin line)
@@ -54,19 +55,19 @@ export function MessagesPanel() {
   );
   const viewportHeight = Math.max(3, Math.floor(availableLines / 3));
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (start at offset 0 since messages are reversed)
   useEffect(() => {
-    setScrollOffset(Math.max(0, messages.length - viewportHeight));
-  }, [messages.length, viewportHeight]);
+    setScrollOffset(0);
+  }, [messages.length]);
 
   // Keyboard handlers for scrolling
   useKeyHandler(
     {
       'ctrl+k': () => handleScrollUp(),
       'ctrl+j': () => handleScrollDown(),
-      'ctrl+g': () => setScrollOffset(0),
-      'ctrl+l': () =>
+      'ctrl+g': () =>
         setScrollOffset(Math.max(0, messages.length - viewportHeight)),
+      'ctrl+l': () => setScrollOffset(0),
       enter: () => {
         // Go to input to reply
         dispatch({ type: 'FOCUS_CHANGED', payload: 'input' });
@@ -134,10 +135,12 @@ export function MessagesPanel() {
   );
 
   const showScrollIndicator = messages.length > viewportHeight;
+  // Invert scroll position since messages are reversed (0 = bottom, max = top)
   const scrollPosition =
     messages.length > 0
       ? Math.round(
-          (scrollOffset / Math.max(1, messages.length - viewportHeight)) * 100
+          100 -
+            (scrollOffset / Math.max(1, messages.length - viewportHeight)) * 100
         )
       : 0;
 
@@ -157,7 +160,13 @@ export function MessagesPanel() {
         </Text>
       </Box>
 
-      <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
+      <Box
+        flexDirection="column"
+        flexGrow={1}
+        minHeight={0}
+        overflow="hidden"
+        justifyContent="flex-end"
+      >
         {!currentChat && !currentThread ? (
           <Text color="gray">Select a chat to view messages</Text>
         ) : currentThread?.topic_id === 'new' ? (

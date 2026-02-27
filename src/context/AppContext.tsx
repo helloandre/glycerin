@@ -163,18 +163,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
               [threadId]: updatedThread,
             },
           },
-          // Update chat unread status if not currently active
+          // Update chat unread status and sort timestamp if not currently active
           chats: {
             ...state.chats,
             [chatId]: {
               ...state.chats[chatId],
               isUnread: state.active.chat !== chatId,
+              sortTimestamp: Date.now(),
             },
           },
         };
       }
 
-      // If thread doesn't exist in state yet, just mark chat as unread
+      // If thread doesn't exist in state yet, just mark chat as unread and update sort timestamp
       return {
         ...state,
         chats: {
@@ -182,6 +183,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           [chatId]: {
             ...state.chats[chatId],
             isUnread: state.active.chat !== chatId,
+            sortTimestamp: Date.now(),
           },
         },
       };

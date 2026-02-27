@@ -197,13 +197,13 @@ function AppContent({ client }: AppProps) {
   const getNavigationHints = () => {
     switch (state.focused) {
       case 'chats':
-        return 'j/k:navigate g/G:top/bottom ⏎:select ^N:new ^F:search ^B:browse ^L:leave 1/2/3:mode ^U/^M:filter';
+        return '1/2/3:home/mentions/list j/k:navigate g/G:top/bottom ^n:new ^f:search ^b:browse ^l:leave ^u:unread ^m:muted ⏎:select';
       case 'threads':
-        return 'j/k:navigate g/G:top/bottom ⏎:select ^N:new thread ^D:load more esc:back';
+        return 'j/k:navigate g/G:top/bottom ^N:new thread ^D:load more esc:back ⏎:select';
       case 'messages':
-        return '^K/^J:scroll ^G/^L:top/bottom ⏎:reply esc:back';
+        return '^K/^J:scroll ^G/^L:top/bottom esc:back ⏎:reply';
       case 'input':
-        return '⏎:send esc:back';
+        return 'esc:back ⏎:send';
       default:
         return 'Ctrl+C:quit /:filter';
     }

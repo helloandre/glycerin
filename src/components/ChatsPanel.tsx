@@ -5,7 +5,7 @@
  */
 
 import { Box, Text, useInput, useStdout } from 'ink';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Space } from '../../vendor/google-chat-api/index.js';
 import {
   useAppState,
@@ -32,6 +32,7 @@ export function ChatsPanel() {
   const [browseRooms, setBrowseRooms] = useState<Space[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [previewedRoom, setPreviewedRoom] = useState<Space | null>(null);
+  const lastSyncedChatId = useRef<string | null>(null);
 
   const displayMode = state.chatDisplayMode;
   const showOnlyUnread = state.showOnlyUnread;
@@ -166,14 +167,19 @@ export function ChatsPanel() {
   }, [state.chatSearchTrigger, mode]);
 
   // Update selected index when current chat changes (only in normal mode)
+  // Only sync when the chat ID actually changes, not when displayItems changes
   useEffect(() => {
     if (mode === 'normal' && currentChat) {
-      const index = displayItems.findIndex(
-        item =>
-          item.type === 'chat' && (item.chat as Chat).id === currentChat.id
-      );
-      if (index !== -1) {
-        setSelectedIndex(index);
+      // Only sync if the currentChat has actually changed
+      if (lastSyncedChatId.current !== currentChat.id) {
+        const index = displayItems.findIndex(
+          item =>
+            item.type === 'chat' && (item.chat as Chat).id === currentChat.id
+        );
+        if (index !== -1) {
+          setSelectedIndex(index);
+          lastSyncedChatId.current = currentChat.id;
+        }
       }
     }
   }, [currentChat, displayItems, mode]);
