@@ -4,7 +4,7 @@
  * Features: scrollable viewport, pagination
  */
 
-import { Box, Text } from 'ink';
+import { Box, Text, useStdout } from 'ink';
 import { useEffect, useState } from 'react';
 import {
   useAppState,
@@ -35,13 +35,18 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
 
-  // Fixed viewport height for threads panel
-  // Panel height: 6 lines
+  // Dynamic viewport height based on terminal size
+  // ThreadsPanel takes 30% of available space
   // Panel header: 2 lines (title + margin)
   // Panel footer (when focused): 3 lines (help text + 2 borders)
-  // Panel borders: 2 lines (top + bottom border, shared with header/footer)
-  // Available for content: ~3-4 visible items
-  const viewportHeight = 3;
+  // Panel borders: 2 lines (top + bottom border)
+  const { stdout } = useStdout();
+  const titleBarHeight = 3;
+  const inputBoxHeight = 4;
+  const headerFooterOverhead = isFocused ? 7 : 4; // header + footer + borders
+  const totalAvailableHeight = stdout.rows - titleBarHeight - inputBoxHeight;
+  const threadsPanelHeight = Math.floor(totalAvailableHeight * 0.3);
+  const viewportHeight = Math.max(3, threadsPanelHeight - headerFooterOverhead);
 
   // Update selected index when current thread changes
   useEffect(() => {
@@ -160,7 +165,8 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
       flexDirection="column"
       width="75%"
       flexShrink={0}
-      height={6}
+      height="30%"
+      minHeight={0}
       borderStyle="single"
       borderColor={isFocused ? 'cyan' : 'gray'}
       paddingX={1}
@@ -177,7 +183,7 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
         )}
       </Box>
 
-      <Box flexDirection="column" flexGrow={1}>
+      <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
         {threads.length === 0 ? (
           <Text color="gray">
             {isLoading ? 'Loading threads...' : 'No threads in this space'}

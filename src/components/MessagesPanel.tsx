@@ -31,20 +31,28 @@ export function MessagesPanel() {
   //
   // Layout breakdown:
   // - Title bar: 3 lines
-  // - ThreadsPanel (when shown): 6 lines (fixed height)
+  // - ThreadsPanel (when shown): 30% of available space
   // - InputBox: 4 lines (fixed height)
+  // - MessagesPanel: 70% of available space (or 100% if no threads panel)
   // - MessagesPanel chrome:
   //   - Top border: 1 line
   //   - Header + margin: 2 lines
   //   - Footer (when focused): 3 lines
   //   - Bottom border: 1 line (shared with footer or separate)
-  //
-  // Total overhead when focused with threads: 3 + 6 + 4 + 1 + 2 + 3 + 1 = 20 lines
-  // Total overhead when focused without threads: 3 + 4 + 1 + 2 + 3 + 1 = 14 lines
-  //
-  // Since we can't easily detect if threads panel is shown, use worst case (20 lines)
-  const panelOverhead = isFocused ? 20 : 17;
-  const availableLines = Math.max(9, stdout.rows - panelOverhead);
+  const titleBarHeight = 3;
+  const inputBoxHeight = 4;
+  const headerFooterOverhead = isFocused ? 7 : 4; // header + footer + borders
+  const totalAvailableHeight = stdout.rows - titleBarHeight - inputBoxHeight;
+
+  // Messages panel takes 70% if threads panel is shown, otherwise 100%
+  const showThreadsPanel = currentChat && currentChat.type !== 'dm';
+  const messagesPanelHeight = showThreadsPanel
+    ? Math.floor(totalAvailableHeight * 0.7)
+    : totalAvailableHeight;
+  const availableLines = Math.max(
+    9,
+    messagesPanelHeight - headerFooterOverhead
+  );
   const viewportHeight = Math.max(3, Math.floor(availableLines / 3));
 
   // Auto-scroll to bottom when new messages arrive
@@ -139,6 +147,7 @@ export function MessagesPanel() {
       flexDirection="column"
       width="75%"
       flexGrow={1}
+      minHeight={0}
       borderStyle="single"
       borderColor={isFocused ? 'cyan' : 'gray'}
       paddingX={1}
@@ -150,7 +159,7 @@ export function MessagesPanel() {
         </Text>
       </Box>
 
-      <Box flexDirection="column" flexGrow={1}>
+      <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
         {!currentChat && !currentThread ? (
           <Text color="gray">Select a chat to view messages</Text>
         ) : messages.length === 0 ? (

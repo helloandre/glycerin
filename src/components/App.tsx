@@ -221,7 +221,7 @@ function AppContent({ client }: AppProps) {
         <ChatsPanel />
 
         {/* Right Side - Threads, Messages, Input */}
-        <Box flexDirection="column" width="75%" flexGrow={1}>
+        <Box flexDirection="column" width="75%" flexGrow={1} minHeight={0}>
           <ThreadsPanel client={client} onLoadMore={loadMoreThreads} />
           <MessagesPanel />
           <InputBox client={client} />
