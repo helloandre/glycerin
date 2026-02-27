@@ -187,7 +187,7 @@ function AppContent({ client }: AppProps) {
   }, [state.active.chat, state.active.thread, state.chats, client, dispatch]);
 
   return (
-    <Box flexDirection="column" minHeight={0}>
+    <Box flexDirection="column" height="100%">
       {/* Title Bar */}
       <Box
         borderStyle="single"

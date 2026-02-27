@@ -164,8 +164,9 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
     <Box
       flexDirection="column"
       width="75%"
+      flexBasis="30%"
       flexShrink={0}
-      height="30%"
+      flexGrow={0}
       minHeight={0}
       borderStyle="single"
       borderColor={isFocused ? 'cyan' : 'gray'}
