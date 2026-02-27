@@ -96,6 +96,7 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
       pagedown: () => handleLoadMore(),
       'ctrl+d': () => handleLoadMore(),
       enter: () => handleSelect(),
+      'ctrl+n': () => handleNewThread(),
       escape: () => dispatch({ type: 'FOCUS_CHANGED', payload: 'chats' }),
     },
     { enabled: isFocused }
@@ -113,6 +114,15 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
     const thread = reversedThreads[selectedIndex];
     if (thread) {
       dispatch({ type: 'THREAD_SELECTED', payload: thread });
+    }
+  };
+
+  const handleNewThread = () => {
+    if (currentChat) {
+      dispatch({
+        type: 'NEW_THREAD_STARTED',
+        payload: { chatId: currentChat.id },
+      });
     }
   };
 

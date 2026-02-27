@@ -88,10 +88,18 @@ npm run check:fix
 
 - `enter` - select chat
 - `j`/`k`/`up`/`down`/`g`/`shift+g` - navigate
+- `1` - switch to Home view (all threads from everywhere)
+- `2` - switch to Mentions view (show only mentions)
+- `3` - switch to List view (organized by DMs/Spaces/Apps)
+- `ctrl+u` - toggle show only unread (Home and Mentions views)
+- `ctrl+m` - toggle showing muted chats
+- `ctrl+shift+m` - mute/unmute selected chat
+- `ctrl+f` - search chats
+- `ctrl+b` - browse/join new rooms
+- `ctrl+n` - new thread (in spaces) or open DM
+- `ctrl+l` - leave selected space (with confirmation, works in normal and search modes)
 - `e` - expand/collapse section
-- `ctrl+r l` - leave room
 - (todo) `ctrl+r s` - star/unstar
-- (todo) `ctrl+r m` - mute/unmute
 - (todo) `ctrl+r a` - add user/bot
 
 ### Threads

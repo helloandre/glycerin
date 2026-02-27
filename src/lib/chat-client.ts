@@ -189,6 +189,16 @@ export class GlycerinChatClient {
   }
 
   /**
+   * Leave a space
+   */
+  async leaveSpace(spaceId: string): Promise<boolean> {
+    this.ensureInitialized();
+    // TODO: Implement actual API call when available in google-chat-api
+    // For now, this is a placeholder that returns success
+    return Promise.resolve(true);
+  }
+
+  /**
    * Save cookies to cache
    */
   saveCookies(cookies: Record<string, string>): void {

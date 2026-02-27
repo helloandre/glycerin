@@ -25,6 +25,10 @@ const initialState: AppState = {
   focused: 'chats',
   loading: {},
   chatSearchTrigger: 0,
+  chatDisplayMode: 'home',
+  showOnlyUnread: true,
+  showMuted: false,
+  confirmationModal: null,
 };
 
 // Reducer function
@@ -62,6 +66,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
         active: {
           ...state.active,
           thread: action.payload.topic_id,
+        },
+        focused: 'input',
+      };
+
+    case 'NEW_THREAD_STARTED':
+      return {
+        ...state,
+        active: {
+          ...state.active,
+          chat: action.payload.chatId,
+          thread: 'new', // Special marker for new thread
         },
         focused: 'input',
       };
@@ -260,6 +275,79 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
+    case 'CHAT_DISPLAY_MODE_CHANGED':
+      return {
+        ...state,
+        chatDisplayMode: action.payload,
+      };
+
+    case 'SHOW_ONLY_UNREAD_TOGGLED':
+      return {
+        ...state,
+        showOnlyUnread: !state.showOnlyUnread,
+      };
+
+    case 'SHOW_MUTED_TOGGLED':
+      return {
+        ...state,
+        showMuted: !state.showMuted,
+      };
+
+    case 'CHAT_MUTE_TOGGLED': {
+      const chat = state.chats[action.payload.chatId];
+      if (chat) {
+        return {
+          ...state,
+          chats: {
+            ...state.chats,
+            [action.payload.chatId]: {
+              ...chat,
+              isMuted: !chat.isMuted,
+            },
+          },
+        };
+      }
+      return state;
+    }
+
+    case 'CONFIRMATION_OPENED':
+      return {
+        ...state,
+        confirmationModal: action.payload,
+        focused: 'confirmation',
+      };
+
+    case 'CONFIRMATION_CLOSED':
+      return {
+        ...state,
+        confirmationModal: null,
+        focused: state.active.chat ? 'chats' : 'chats',
+      };
+
+    case 'CHAT_LEFT': {
+      const { [action.payload.chatId]: _, ...remainingChats } = state.chats;
+      const { [action.payload.chatId]: __, ...remainingThreads } =
+        state.threads;
+
+      return {
+        ...state,
+        chats: remainingChats,
+        threads: remainingThreads,
+        active: {
+          ...state.active,
+          chat:
+            state.active.chat === action.payload.chatId
+              ? null
+              : state.active.chat,
+          thread:
+            state.active.chat === action.payload.chatId
+              ? null
+              : state.active.thread,
+        },
+        unread: state.unread.filter(c => c.id !== action.payload.chatId),
+      };
+    }
+
     default:
       return state;
   }
@@ -317,6 +405,15 @@ export function useCurrentThread() {
   if (!thread && state.active.thread === 'dm') {
     return {
       topic_id: 'dm',
+      space_id: state.active.chat,
+      replies: [],
+      isUnread: false,
+    } as any;
+  }
+  // If thread doesn't exist and it's a 'new' thread, create a virtual thread
+  if (!thread && state.active.thread === 'new') {
+    return {
+      topic_id: 'new',
       space_id: state.active.chat,
       replies: [],
       isUnread: false,

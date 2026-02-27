@@ -11,6 +11,7 @@ import type { GlycerinChatClient } from '../lib/chat-client.js';
 import { logger } from '../lib/logger.js';
 import type { Chat } from '../types/index.js';
 import { ChatsPanel } from './ChatsPanel.js';
+import { ConfirmationModal } from './ConfirmationModal.js';
 import { EventBridge } from './EventBridge.js';
 import { InputBox } from './InputBox.js';
 import { LoadingIndicator } from './LoadingIndicator.js';
@@ -95,6 +96,8 @@ function AppContent({ client }: AppProps) {
           sortTimestamp: item.lastMentionTime || 0,
           isUnread: (item.unreadCount || 0) > 0,
           normalizedName: (item.name || item.id).toLowerCase(),
+          hasMention: item.lastMentionTime && item.lastMentionTime > 0,
+          isMuted: item.isMuted || false,
         }));
         dispatch({ type: 'CHATS_LOADED', payload: chats });
       } catch (error) {
@@ -190,6 +193,22 @@ function AppContent({ client }: AppProps) {
     loadMessages();
   }, [state.active.chat, state.active.thread, state.chats, client, dispatch]);
 
+  // Get navigation hints based on focused component
+  const getNavigationHints = () => {
+    switch (state.focused) {
+      case 'chats':
+        return 'j/k:navigate g/G:top/bottom ⏎:select ^N:new ^F:search ^B:browse ^L:leave 1/2/3:mode ^U/^M:filter';
+      case 'threads':
+        return 'j/k:navigate g/G:top/bottom ⏎:select ^N:new thread ^D:load more esc:back';
+      case 'messages':
+        return '^K/^J:scroll ^G/^L:top/bottom ⏎:reply esc:back';
+      case 'input':
+        return '⏎:send esc:back';
+      default:
+        return 'Ctrl+C:quit /:filter';
+    }
+  };
+
   return (
     <Box flexDirection="column" height={stdout.rows} minHeight={stdout.rows}>
       {/* Title Bar */}
@@ -206,7 +225,7 @@ function AppContent({ client }: AppProps) {
             Glycerin - Google Chat TUI
           </Text>
           <Text color="gray"> | </Text>
-          <Text color="gray">Ctrl+C: Quit | /: Filter Chats</Text>
+          <Text color="gray">{getNavigationHints()}</Text>
         </Box>
         <Box>
           <LoadingIndicator loadingKey="chats" message="Loading chats..." />
@@ -231,6 +250,9 @@ function AppContent({ client }: AppProps) {
           <InputBox client={client} />
         </Box>
       </Box>
+
+      {/* Confirmation Modal - overlays everything */}
+      {state.confirmationModal && <ConfirmationModal />}
     </Box>
   );
 }

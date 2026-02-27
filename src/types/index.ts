@@ -28,9 +28,11 @@ export type {
 export interface Chat extends Space {
   isUnread: boolean;
   isFave?: boolean;
+  isMuted?: boolean;
   normalizedName: string;
   mostRecentAt?: number;
   mostRecentReadAt?: number;
+  hasMention?: boolean;
 }
 
 // Thread is essentially a Topic with UI state
@@ -40,8 +42,23 @@ export interface Thread extends Topic {
 }
 
 // UI-specific types
-export type FocusTarget = 'chats' | 'threads' | 'messages' | 'input' | 'search';
+export type FocusTarget =
+  | 'chats'
+  | 'threads'
+  | 'messages'
+  | 'input'
+  | 'search'
+  | 'confirmation';
 export type SearchMode = 'local' | 'remote';
+export type ChatDisplayMode = 'home' | 'mentions' | 'list';
+
+export interface ConfirmationModal {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
 
 // App state structure
 export interface AppState {
@@ -79,6 +96,10 @@ export interface AppState {
   focused: FocusTarget;
   loading: Record<string, boolean>;
   chatSearchTrigger: number; // Timestamp to trigger chat search mode
+  chatDisplayMode: ChatDisplayMode; // Display mode for chats panel
+  showOnlyUnread: boolean; // Filter to show only unread items
+  showMuted: boolean; // Show muted chats
+  confirmationModal: ConfirmationModal | null; // Confirmation modal state
 }
 
 // Action types for state reducer
@@ -86,6 +107,7 @@ export type AppAction =
   | { type: 'CHATS_LOADED'; payload: Chat[] }
   | { type: 'CHAT_SELECTED'; payload: Chat }
   | { type: 'THREAD_SELECTED'; payload: Thread }
+  | { type: 'NEW_THREAD_STARTED'; payload: { chatId: string } }
   | {
       type: 'THREADS_LOADED';
       payload: {
@@ -109,7 +131,14 @@ export type AppAction =
   | { type: 'MARK_READ'; payload: { chatId: string; threadId?: string } }
   | { type: 'LOADING_START'; payload: string }
   | { type: 'LOADING_END'; payload: string }
-  | { type: 'LOAD_MORE_THREADS'; payload: { chatId: string } };
+  | { type: 'LOAD_MORE_THREADS'; payload: { chatId: string } }
+  | { type: 'CHAT_DISPLAY_MODE_CHANGED'; payload: ChatDisplayMode }
+  | { type: 'SHOW_ONLY_UNREAD_TOGGLED' }
+  | { type: 'SHOW_MUTED_TOGGLED' }
+  | { type: 'CHAT_MUTE_TOGGLED'; payload: { chatId: string } }
+  | { type: 'CONFIRMATION_OPENED'; payload: ConfirmationModal }
+  | { type: 'CONFIRMATION_CLOSED' }
+  | { type: 'CHAT_LEFT'; payload: { chatId: string } };
 
 // App actions interface
 export interface AppActions {

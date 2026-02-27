@@ -5,7 +5,7 @@
 
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useAppState,
   useCurrentChat,
@@ -37,6 +37,13 @@ export function InputBox({ client }: InputBoxProps) {
     { isActive: isFocused }
   );
 
+  // Clear input text when focus leaves the input panel
+  useEffect(() => {
+    if (!isFocused) {
+      setValue('');
+    }
+  }, [isFocused]);
+
   const handleSubmit = async (text: string) => {
     if (!text.trim() || !currentChat) return;
 
@@ -48,6 +55,9 @@ export function InputBox({ client }: InputBoxProps) {
         currentThread.topic_id === 'dm'
       ) {
         // Send as new message to chat (for DMs or when no thread selected)
+        await client.sendMessage(currentChat.id, text);
+      } else if (currentThread.topic_id === 'new') {
+        // Create a new thread by sending a message to the space
         await client.sendMessage(currentChat.id, text);
       } else {
         // Reply to thread in space
@@ -80,7 +90,6 @@ export function InputBox({ client }: InputBoxProps) {
   return (
     <Box
       flexDirection="column"
-      width="75%"
       flexShrink={0}
       height={4}
       borderStyle="single"

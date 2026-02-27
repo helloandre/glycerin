@@ -15,9 +15,14 @@ import {
 import { useFocus } from '../hooks/useFocus.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
 import { getChatClient } from '../lib/chat-client.js';
-import type { Chat } from '../types/index.js';
+import type { Chat, ChatDisplayMode } from '../types/index.js';
 
 type PanelMode = 'normal' | 'search' | 'browse';
+
+interface ChatSection {
+  title: string;
+  chats: Chat[];
+}
 
 export function ChatsPanel() {
   const chats = useChats();
@@ -33,8 +38,12 @@ export function ChatsPanel() {
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [previewedRoom, setPreviewedRoom] = useState<Space | null>(null);
 
+  const displayMode = state.chatDisplayMode;
+  const showOnlyUnread = state.showOnlyUnread;
+  const showMuted = state.showMuted;
+
   // Filter chats based on search query
-  const filteredChats =
+  const searchFilteredChats =
     mode === 'search'
       ? chats.filter(chat =>
           chat.normalizedName.includes(searchQuery.toLowerCase())
@@ -48,8 +57,68 @@ export function ChatsPanel() {
       room.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Use browse rooms or filtered chats depending on mode
-  const displayItems = mode === 'browse' ? filteredBrowseRooms : filteredChats;
+  // Apply display mode filtering
+  let displayChats = searchFilteredChats;
+
+  if (mode === 'normal') {
+    // Filter out muted chats if showMuted is false
+    if (!showMuted) {
+      displayChats = displayChats.filter(chat => !chat.isMuted);
+    }
+
+    if (displayMode === 'mentions') {
+      // Show only chats with mentions
+      displayChats = displayChats.filter(chat => chat.hasMention);
+    }
+
+    // Apply unread filter if enabled (for home and mentions modes)
+    if (
+      (displayMode === 'home' || displayMode === 'mentions') &&
+      showOnlyUnread
+    ) {
+      displayChats = displayChats.filter(chat => chat.isUnread);
+    }
+  }
+
+  // Group chats by type for 'list' mode
+  type DisplayItem =
+    | { type: 'section'; title: string }
+    | { type: 'chat'; chat: Chat | Space };
+  const displayItems: DisplayItem[] = [];
+
+  if (mode === 'browse') {
+    // Browse mode: show filtered rooms as chats
+    displayItems.push(
+      ...filteredBrowseRooms.map(room => ({
+        type: 'chat' as const,
+        chat: room,
+      }))
+    );
+  } else if (mode === 'normal' && displayMode === 'list') {
+    // List mode: group by sections
+    const dms = displayChats.filter(chat => chat.type === 'dm');
+    const spaces = displayChats.filter(chat => chat.type === 'space');
+
+    if (dms.length > 0) {
+      displayItems.push({ type: 'section', title: 'Direct Messages' });
+      displayItems.push(...dms.map(chat => ({ type: 'chat' as const, chat })));
+    }
+
+    if (spaces.length > 0) {
+      displayItems.push({ type: 'section', title: 'Spaces' });
+      displayItems.push(
+        ...spaces.map(chat => ({ type: 'chat' as const, chat }))
+      );
+    }
+
+    // Apps section (placeholder for now)
+    displayItems.push({ type: 'section', title: 'Apps' });
+  } else {
+    // Home or Mentions mode: flat list
+    displayItems.push(
+      ...displayChats.map(chat => ({ type: 'chat' as const, chat }))
+    );
+  }
 
   // Calculate viewport height based on terminal height
   //
@@ -101,12 +170,44 @@ export function ChatsPanel() {
   // Update selected index when current chat changes (only in normal mode)
   useEffect(() => {
     if (mode === 'normal' && currentChat) {
-      const index = chats.findIndex(c => c.id === currentChat.id);
+      const index = displayItems.findIndex(
+        item =>
+          item.type === 'chat' && (item.chat as Chat).id === currentChat.id
+      );
       if (index !== -1) {
         setSelectedIndex(index);
       }
     }
-  }, [currentChat, chats, mode]);
+  }, [currentChat, displayItems, mode]);
+
+  // Ensure selected index is valid (not a section header)
+  useEffect(() => {
+    if (
+      displayItems.length > 0 &&
+      displayItems[selectedIndex]?.type === 'section'
+    ) {
+      // Find next valid chat item
+      let nextIndex = selectedIndex + 1;
+      while (
+        nextIndex < displayItems.length &&
+        displayItems[nextIndex].type === 'section'
+      ) {
+        nextIndex++;
+      }
+      if (nextIndex < displayItems.length) {
+        setSelectedIndex(nextIndex);
+      } else {
+        // Try going backwards
+        let prevIndex = selectedIndex - 1;
+        while (prevIndex >= 0 && displayItems[prevIndex].type === 'section') {
+          prevIndex--;
+        }
+        if (prevIndex >= 0) {
+          setSelectedIndex(prevIndex);
+        }
+      }
+    }
+  }, [displayItems, selectedIndex]);
 
   // Auto-scroll to keep selected item visible
   useEffect(() => {
@@ -131,6 +232,9 @@ export function ChatsPanel() {
       setMode('normal');
       setSearchQuery('');
       setPreviewedRoom(null);
+    } else if (key.ctrl && input === 'l' && mode === 'search') {
+      // Handle leave space in search mode only (not browse mode)
+      handleLeaveSpace();
     } else if (key.backspace || key.delete) {
       setSearchQuery(prev => prev.slice(0, -1));
     } else if (!key.ctrl && !key.meta && input) {
@@ -145,9 +249,31 @@ export function ChatsPanel() {
       down: () => handleDown(),
       k: () => handleUp(),
       up: () => handleUp(),
-      g: () => setSelectedIndex(0),
-      'shift+g': () => setSelectedIndex(Math.max(0, displayItems.length - 1)),
+      g: () => {
+        // Jump to first chat item (skip sections)
+        let firstIndex = 0;
+        while (
+          firstIndex < displayItems.length &&
+          displayItems[firstIndex].type === 'section'
+        ) {
+          firstIndex++;
+        }
+        if (firstIndex < displayItems.length) {
+          setSelectedIndex(firstIndex);
+        }
+      },
+      'shift+g': () => {
+        // Jump to last chat item (skip sections)
+        let lastIndex = displayItems.length - 1;
+        while (lastIndex >= 0 && displayItems[lastIndex].type === 'section') {
+          lastIndex--;
+        }
+        if (lastIndex >= 0) {
+          setSelectedIndex(lastIndex);
+        }
+      },
       enter: () => handleSelect(),
+      'ctrl+n': () => handleNewThread(),
       'ctrl+f': () => {
         if (mode === 'normal') {
           setMode('search');
@@ -167,6 +293,54 @@ export function ChatsPanel() {
           handleJoinRoom();
         }
       },
+      'ctrl+u': () => {
+        if (
+          mode === 'normal' &&
+          (displayMode === 'home' || displayMode === 'mentions')
+        ) {
+          dispatch({ type: 'SHOW_ONLY_UNREAD_TOGGLED' });
+        }
+      },
+      'ctrl+m': () => {
+        if (mode === 'normal') {
+          dispatch({ type: 'SHOW_MUTED_TOGGLED' });
+        }
+      },
+      'ctrl+shift+m': () => {
+        if (mode === 'normal') {
+          const item = displayItems[selectedIndex];
+          if (item && item.type === 'chat') {
+            const chat = item.chat as Chat;
+            dispatch({
+              type: 'CHAT_MUTE_TOGGLED',
+              payload: { chatId: chat.id },
+            });
+          }
+        }
+      },
+      '1': () => {
+        if (mode === 'normal') {
+          dispatch({ type: 'CHAT_DISPLAY_MODE_CHANGED', payload: 'home' });
+          setSelectedIndex(0);
+        }
+      },
+      '2': () => {
+        if (mode === 'normal') {
+          dispatch({ type: 'CHAT_DISPLAY_MODE_CHANGED', payload: 'mentions' });
+          setSelectedIndex(0);
+        }
+      },
+      '3': () => {
+        if (mode === 'normal') {
+          dispatch({ type: 'CHAT_DISPLAY_MODE_CHANGED', payload: 'list' });
+          setSelectedIndex(0);
+        }
+      },
+      'ctrl+l': () => {
+        if (mode === 'normal') {
+          handleLeaveSpace();
+        }
+      },
       escape: () => {
         if (mode === 'browse' || mode === 'search') {
           setMode('normal');
@@ -179,42 +353,80 @@ export function ChatsPanel() {
   );
 
   const handleDown = () => {
-    setSelectedIndex(Math.min(displayItems.length - 1, selectedIndex + 1));
+    let nextIndex = selectedIndex + 1;
+
+    // Skip section headers
+    while (
+      nextIndex < displayItems.length &&
+      displayItems[nextIndex].type === 'section'
+    ) {
+      nextIndex++;
+    }
+
+    if (nextIndex < displayItems.length) {
+      setSelectedIndex(nextIndex);
+    }
   };
 
   const handleUp = () => {
-    setSelectedIndex(Math.max(0, selectedIndex - 1));
+    let prevIndex = selectedIndex - 1;
+
+    // Skip section headers
+    while (prevIndex >= 0 && displayItems[prevIndex].type === 'section') {
+      prevIndex--;
+    }
+
+    if (prevIndex >= 0) {
+      setSelectedIndex(prevIndex);
+    }
+  };
+
+  const handleNewThread = () => {
+    const item = displayItems[selectedIndex];
+    if (!item || item.type !== 'chat') return;
+
+    const chat = item.chat as Chat;
+
+    if (chat.type === 'dm') {
+      // For DMs, behave like normal selection (open messages and focus input)
+      dispatch({ type: 'CHAT_SELECTED', payload: chat });
+    } else {
+      // For spaces, start a new thread
+      dispatch({ type: 'NEW_THREAD_STARTED', payload: { chatId: chat.id } });
+    }
   };
 
   const handleSelect = () => {
+    const item = displayItems[selectedIndex];
+    if (!item) return;
+
+    // Ignore section headers
+    if (item.type === 'section') return;
+
+    const chat = item.chat as Chat;
+
     if (mode === 'browse') {
-      const room = filteredBrowseRooms[selectedIndex];
-      if (room) {
-        if (previewedRoom?.id === room.id) {
-          // Second Enter: Join the room
-          handleJoinRoom();
-        } else {
-          // First Enter: Preview the room
-          setPreviewedRoom(room);
-          // Load threads for preview
-          dispatch({
-            type: 'CHAT_SELECTED',
-            payload: {
-              ...room,
-              isUnread: false,
-              normalizedName: room.name?.toLowerCase() || '',
-            } as Chat,
-          });
-        }
+      if (previewedRoom?.id === chat.id) {
+        // Second Enter: Join the room
+        handleJoinRoom();
+      } else {
+        // First Enter: Preview the room
+        setPreviewedRoom(chat as Space);
+        // Load threads for preview
+        dispatch({
+          type: 'CHAT_SELECTED',
+          payload: {
+            ...chat,
+            isUnread: false,
+            normalizedName: chat.name?.toLowerCase() || '',
+          } as Chat,
+        });
       }
     } else {
-      const chat = displayItems[selectedIndex] as Chat;
-      if (chat) {
-        dispatch({ type: 'CHAT_SELECTED', payload: chat });
-        if (mode === 'search') {
-          setMode('normal');
-          setSearchQuery('');
-        }
+      dispatch({ type: 'CHAT_SELECTED', payload: chat });
+      if (mode === 'search') {
+        setMode('normal');
+        setSearchQuery('');
       }
     }
   };
@@ -236,9 +448,55 @@ export function ChatsPanel() {
     setPreviewedRoom(null);
   };
 
-  const formatChatLine = (item: Chat | Space, index: number) => {
+  const handleLeaveSpace = () => {
+    const item = displayItems[selectedIndex];
+    if (!item || item.type !== 'chat') return;
+
+    const chat = item.chat as Chat;
+
+    // Only allow leaving spaces, not DMs
+    if (chat.type !== 'space') {
+      return;
+    }
+
+    // Show confirmation modal
+    dispatch({
+      type: 'CONFIRMATION_OPENED',
+      payload: {
+        isOpen: true,
+        title: 'Leave Space',
+        message: `Are you sure you want to leave "${chat.name || chat.id}"?`,
+        onConfirm: async () => {
+          try {
+            await getChatClient().leaveSpace(chat.id);
+            dispatch({ type: 'CHAT_LEFT', payload: { chatId: chat.id } });
+          } catch (error) {
+            console.error('Failed to leave space:', error);
+          }
+        },
+        onCancel: () => {
+          // Do nothing, just close the modal
+        },
+      },
+    });
+  };
+
+  const formatDisplayItem = (item: DisplayItem, index: number) => {
     const isSelected = index === selectedIndex;
-    const chat = item as Chat;
+
+    // Handle section headers
+    if (item.type === 'section') {
+      return (
+        <Box key={`section-${item.title}`}>
+          <Text color="blue" bold>
+            {item.title}
+          </Text>
+        </Box>
+      );
+    }
+
+    // Handle chat items
+    const chat = item.chat as Chat;
     const _isCurrent = currentChat?.id === chat.id;
 
     // Different color scheme for browse mode
@@ -272,14 +530,22 @@ export function ChatsPanel() {
     const typeIndicator = chat.type === 'dm' ? '👤 ' : '# ';
     const selectionIndicator = isSelected ? '❯ ' : '  ';
     const previewIndicator = isPreviewed ? '👁 ' : '';
+    const mentionIndicator = chat.hasMention ? '@' : '';
+    const mutedIndicator = chat.isMuted ? '🔇 ' : '';
 
     return (
       <Box key={chat.id}>
-        <Text color={color} bold={isSelected && isFocused}>
+        <Text
+          color={color}
+          bold={isSelected && isFocused}
+          dimColor={chat.isMuted}
+        >
           {selectionIndicator}
           {!isBrowse && unreadIndicator}
           {!isBrowse && typeIndicator}
           {previewIndicator}
+          {mentionIndicator && `${mentionIndicator} `}
+          {mutedIndicator}
           {displayName}
         </Text>
       </Box>
@@ -303,11 +569,26 @@ export function ChatsPanel() {
   // Determine placeholder text and color for input box
   let placeholderText = 'Rooms & DMs';
   let inputColor = isFocused ? 'cyan' : 'gray';
+
   if (mode === 'browse') {
     placeholderText = 'Browse Rooms';
     inputColor = isFocused ? 'magenta' : 'gray';
   } else if (mode === 'search') {
     placeholderText = 'Search';
+  } else if (mode === 'normal') {
+    // Update text based on display mode
+    if (displayMode === 'home') {
+      placeholderText = showOnlyUnread ? 'Home (Unread)' : 'Home (All)';
+    } else if (displayMode === 'mentions') {
+      placeholderText = showOnlyUnread ? 'Mentions (Unread)' : 'Mentions (All)';
+    } else if (displayMode === 'list') {
+      placeholderText = 'List';
+    }
+
+    // Add muted indicator if showing muted items
+    if (showMuted) {
+      placeholderText += ' +Muted';
+    }
   }
 
   // Display text in input box
@@ -348,7 +629,7 @@ export function ChatsPanel() {
             )}
             {visibleItems.map((item, viewportIndex) => {
               const actualIndex = scrollOffset + viewportIndex;
-              return formatChatLine(item, actualIndex);
+              return formatDisplayItem(item, actualIndex);
             })}
             {hasMore && (
               <Box>

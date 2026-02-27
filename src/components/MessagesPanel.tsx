@@ -37,11 +37,10 @@ export function MessagesPanel() {
   // - MessagesPanel chrome:
   //   - Top border: 1 line
   //   - Header + margin: 2 lines
-  //   - Footer (when focused): 3 lines
-  //   - Bottom border: 1 line (shared with footer or separate)
+  //   - Bottom border: 1 line
   const titleBarHeight = 3;
   const inputBoxHeight = 4;
-  const headerFooterOverhead = isFocused ? 7 : 4; // header + footer + borders
+  const headerFooterOverhead = 4; // header + borders
   const totalAvailableHeight = stdout.rows - titleBarHeight - inputBoxHeight;
 
   // Messages panel takes 70% if threads panel is shown, otherwise 100%
@@ -145,7 +144,6 @@ export function MessagesPanel() {
   return (
     <Box
       flexDirection="column"
-      width="75%"
       flexGrow={1}
       minHeight={0}
       borderStyle="single"
@@ -162,18 +160,14 @@ export function MessagesPanel() {
       <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
         {!currentChat && !currentThread ? (
           <Text color="gray">Select a chat to view messages</Text>
+        ) : currentThread?.topic_id === 'new' ? (
+          <Text color="gray">Start a new thread - type your message below</Text>
         ) : messages.length === 0 ? (
           <Text color="gray">No messages yet</Text>
         ) : (
           visibleMessages.map((msg, idx) => formatMessage(msg, idx))
         )}
       </Box>
-
-      {isFocused && (
-        <Box borderStyle="single" borderColor="gray" marginTop={1} paddingX={1}>
-          <Text dimColor>^K/^J:scroll ^G/^L:top/bottom ⏎:reply esc:back</Text>
-        </Box>
-      )}
     </Box>
   );
 }
