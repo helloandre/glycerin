@@ -7,8 +7,8 @@ import {
   GoogleChatClient,
   loadCachedCookies,
   saveCachedCookies,
-} from 'google-chat-api/packages/gchat/dist/index.js';
-import * as utils from 'google-chat-api/packages/gchat/dist/utils/index.js';
+} from '../../vendor/google-chat-api/index.js';
+import * as utils from '../../vendor/google-chat-api/utils/index.js';
 import type { Message, Space } from '../types/index.js';
 
 export class GlycerinChatClient {

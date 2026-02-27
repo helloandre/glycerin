@@ -22,9 +22,24 @@ export function MessagesPanel() {
   const messages = currentThread?.replies || [];
 
   // Calculate viewport height dynamically
-  // Each message takes ~3 lines (sender+time, text, margin)
-  // Title bar (3) + header (2) + threads panel (6) + input (4) + footer (3) + borders = ~18-20 lines
-  const availableLines = Math.max(10, stdout.rows - 20);
+  // Each message takes ~3 lines (sender+time line, text line, margin line)
+  //
+  // Layout breakdown:
+  // - Title bar: 3 lines
+  // - ThreadsPanel (when shown): 6 lines (fixed height)
+  // - InputBox: 4 lines (fixed height)
+  // - MessagesPanel chrome:
+  //   - Top border: 1 line
+  //   - Header + margin: 2 lines
+  //   - Footer (when focused): 3 lines
+  //   - Bottom border: 1 line (shared with footer or separate)
+  //
+  // Total overhead when focused with threads: 3 + 6 + 4 + 1 + 2 + 3 + 1 = 20 lines
+  // Total overhead when focused without threads: 3 + 4 + 1 + 2 + 3 + 1 = 14 lines
+  //
+  // Since we can't easily detect if threads panel is shown, use worst case (20 lines)
+  const panelOverhead = isFocused ? 20 : 17;
+  const availableLines = Math.max(9, stdout.rows - panelOverhead);
   const viewportHeight = Math.max(3, Math.floor(availableLines / 3));
 
   // Auto-scroll to bottom when new messages arrive

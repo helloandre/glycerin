@@ -25,7 +25,12 @@ export function ThreadsPanel() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
 
-  // Fixed viewport height (height 6 - header 2 - footer help 3 = ~3 visible items)
+  // Fixed viewport height for threads panel
+  // Panel height: 6 lines
+  // Panel header: 2 lines (title + margin)
+  // Panel footer (when focused): 3 lines (help text + 2 borders)
+  // Panel borders: 2 lines (top + bottom border, shared with header/footer)
+  // Available for content: ~3-4 visible items
   const viewportHeight = 3;
 
   // Update selected index when current thread changes

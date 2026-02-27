@@ -12,7 +12,7 @@ import type {
   Space,
   Topic,
   UserPresence,
-} from 'google-chat-api/packages/gchat/dist/index.js';
+} from '../../vendor/google-chat-api/index.js';
 
 export type {
   Space,

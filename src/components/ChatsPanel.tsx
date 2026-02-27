@@ -24,9 +24,23 @@ export function ChatsPanel() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
 
-  // Calculate viewport height (terminal height minus header, footer, borders, etc.)
-  // Title bar (3 lines) + header (2 lines) + footer help text (3 lines) + borders (2 lines) = ~10 lines
-  const viewportHeight = Math.max(5, stdout.rows - 10);
+  // Calculate viewport height based on terminal height
+  //
+  // Layout breakdown:
+  // - Title bar: 3 lines (1 text + 2 borders)
+  // - ChatsPanel chrome:
+  //   - Top border: 1 line
+  //   - Header "Rooms & DMs": 1 line
+  //   - Header margin: 1 line
+  //   - Footer help (when focused): 3 lines (2 borders + 1 text)
+  //   - Bottom border: 1 line (shared with footer if focused, else separate)
+  //
+  // Total overhead when focused: 3 (title) + 1 (border) + 2 (header) + 3 (footer) + 1 (border) = 10 lines
+  // Total overhead when unfocused: 3 (title) + 1 (border) + 2 (header) + 1 (border) = 7 lines
+  //
+  // Use conservative estimate (focused state): stdout.rows - 10
+  const panelOverhead = isFocused ? 10 : 7;
+  const viewportHeight = Math.max(5, stdout.rows - panelOverhead);
 
   // Update selected index when current chat changes
   useEffect(() => {

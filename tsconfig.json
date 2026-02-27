@@ -5,7 +5,8 @@
     "jsx": "react-jsx",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
+    "baseUrl": ".",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -17,8 +18,11 @@
     "allowSyntheticDefaultImports": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "paths": {
+      "google-chat-api/*": ["vendor/google-chat-api/*"]
+    }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "vendor/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx"]
 }

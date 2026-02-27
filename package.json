@@ -1,9 +1,12 @@
 {
   "dependencies": {
+    "@mherod/get-cookie": "^4.4.1",
     "axios": "^0.21.2",
-    "chalk": "^4.1.2",
+    "better-sqlite3": "^12.6.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
     "docopt": "^0.6.2",
-    "google-chat-api": "github:Schachte/google-chat-api#main",
+    "dotenv": "^16.6.1",
     "ink": "^4.4.1",
     "ink-select-input": "^5.0.0",
     "ink-spinner": "^5.0.0",
@@ -11,26 +14,32 @@
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
     "moment": "^2.29.2",
+    "node-fetch": "^3.3.2",
     "playwright": "^1.58.2",
+    "playwright-core": "^1.58.2",
+    "protobufjs": "^7.2.6",
     "qs": "^6.9.3",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "ws": "^8.19.0"
   },
   "name": "@helloandre/glycerin",
   "version": "0.0.1",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "bin": {
-    "gln": "./dist/index.js"
+    "gln": "./dist/src/index.js"
   },
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "2.4.4",
     "@testing-library/react": "^14.1.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^29.5.0",
     "@types/lodash.get": "^4.4.9",
     "@types/lodash.set": "^4.3.9",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.0",
+    "@types/ws": "^8.18.1",
     "ink-testing-library": "^3.0.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.0",
@@ -38,9 +47,7 @@
     "typescript": "^5.3.0"
   },
   "scripts": {
-    "postinstall": "cd node_modules/google-chat-api/packages/gchat && (test -d node_modules || npm install) && npm run build || echo 'Warning: Could not build google-chat-api. Try: npm run build:deps'",
     "build": "tsc",
-    "build:deps": "cd node_modules/google-chat-api/packages/gchat && npm install && npm run build",
     "start": "npm run build && node dist/index.js",
     "dev": "ts-node --esm src/index.ts",
     "debug": "node --inspect-brk -r ts-node/register src/index.ts",
@@ -55,8 +62,6 @@
     "format:write": "biome format --write .",
     "check": "biome check .",
     "check:fix": "biome check --write .",
-    "reinstall": "rm -rf node_modules package-lock.json && npm install",
-    "prepare": "npm run build:deps 2>/dev/null || true",
-    "verify:deps": "node -e \"try { require('./node_modules/google-chat-api/packages/gchat/dist/core/auth.js'); console.log('✅ google-chat-api is properly built'); } catch(e) { console.log('❌ google-chat-api not built. Run: npm run build:deps'); process.exit(1); }\""
+    "reinstall": "rm -rf node_modules package-lock.json && npm install"
   }
 }
