@@ -1,3 +1,9 @@
+/**
+ * Logger wrapper that uses Glycerin's file-based logger
+ * This replaces the original console-based logger to write to glycerin.log
+ */
+
+import { logger as glycerinLogger } from '../../../src/lib/logger.js';
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'silent';
 
@@ -9,18 +15,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 4,
 };
 
-const colors = {
-  reset: '\x1b[0m',
-  dim: '\x1b[2m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  gray: '\x1b[90m',
-};
-
 let currentLevel: LogLevel = 'info';
-let useColors = true;
 
 function initFromEnv(): void {
   const envLevel = process.env.LOG_LEVEL?.toLowerCase();
@@ -41,73 +36,76 @@ export function getLogLevel(): LogLevel {
   return currentLevel;
 }
 
-export function setLogColors(enabled: boolean): void {
-  useColors = enabled;
+export function setLogColors(_enabled: boolean): void {
+  // No-op since we're logging to file
 }
 
 export function isLevelEnabled(level: LogLevel): boolean {
   return LOG_LEVELS[level] <= LOG_LEVELS[currentLevel];
 }
 
-function formatMessage(level: string, component: string, message: string): string {
-  const timestamp = new Date().toISOString().slice(11, 23); 
-  const levelPad = level.toUpperCase().padEnd(5);
-  
-  if (!useColors) {
-    return `${timestamp} ${levelPad} [${component}] ${message}`;
-  }
-  
-  const levelColors: Record<string, string> = {
-    error: colors.red,
-    warn: colors.yellow,
-    info: colors.blue,
-    debug: colors.gray,
-  };
-  
-  const levelColor = levelColors[level] || colors.reset;
-  return `${colors.dim}${timestamp}${colors.reset} ${levelColor}${levelPad}${colors.reset} ${colors.cyan}[${component}]${colors.reset} ${message}`;
-}
-
 export function createLogger(component: string) {
   return {
     error(message: string, ...args: unknown[]): void {
       if (isLevelEnabled('error')) {
-        const formatted = args.length > 0 ? `${message} ${args.map(formatArg).join(' ')}` : message;
-        console.error(formatMessage('error', component, formatted));
+        const formatted =
+          args.length > 0
+            ? `[${component}] ${message} ${args.map(formatArg).join(' ')}`
+            : `[${component}] ${message}`;
+        glycerinLogger.error(formatted);
       }
     },
 
     warn(message: string, ...args: unknown[]): void {
       if (isLevelEnabled('warn')) {
-        const formatted = args.length > 0 ? `${message} ${args.map(formatArg).join(' ')}` : message;
-        console.warn(formatMessage('warn', component, formatted));
+        const formatted =
+          args.length > 0
+            ? `[${component}] ${message} ${args.map(formatArg).join(' ')}`
+            : `[${component}] ${message}`;
+        glycerinLogger.warn(formatted);
       }
     },
 
     info(message: string, ...args: unknown[]): void {
       if (isLevelEnabled('info')) {
-        const formatted = args.length > 0 ? `${message} ${args.map(formatArg).join(' ')}` : message;
-        console.log(formatMessage('info', component, formatted));
+        const formatted =
+          args.length > 0
+            ? `[${component}] ${message} ${args.map(formatArg).join(' ')}`
+            : `[${component}] ${message}`;
+        glycerinLogger.info(formatted);
       }
     },
 
     debug(message: string, ...args: unknown[]): void {
       if (isLevelEnabled('debug')) {
-        const formatted = args.length > 0 ? `${message} ${args.map(formatArg).join(' ')}` : message;
-        console.log(formatMessage('debug', component, formatted));
+        const formatted =
+          args.length > 0
+            ? `[${component}] ${message} ${args.map(formatArg).join(' ')}`
+            : `[${component}] ${message}`;
+        glycerinLogger.debug(formatted);
       }
     },
 
     log(level: LogLevel, message: string, ...args: unknown[]): void {
       if (isLevelEnabled(level)) {
-        const formatted = args.length > 0 ? `${message} ${args.map(formatArg).join(' ')}` : message;
-        const output = formatMessage(level, component, formatted);
-        if (level === 'error') {
-          console.error(output);
-        } else if (level === 'warn') {
-          console.warn(output);
-        } else {
-          console.log(output);
+        const formatted =
+          args.length > 0
+            ? `[${component}] ${message} ${args.map(formatArg).join(' ')}`
+            : `[${component}] ${message}`;
+
+        switch (level) {
+          case 'error':
+            glycerinLogger.error(formatted);
+            break;
+          case 'warn':
+            glycerinLogger.warn(formatted);
+            break;
+          case 'info':
+            glycerinLogger.info(formatted);
+            break;
+          case 'debug':
+            glycerinLogger.debug(formatted);
+            break;
         }
       }
     },
@@ -128,7 +126,7 @@ function formatArg(arg: unknown): string {
   if (typeof arg === 'string') return arg;
   if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
   if (arg instanceof Error) return `${arg.name}: ${arg.message}`;
-  
+
   try {
     const json = JSON.stringify(arg);
     return json.length > 200 ? json.slice(0, 200) + '...' : json;
@@ -138,13 +136,13 @@ function formatArg(arg: unknown): string {
 }
 
 export const log = {
-  cli: createLogger('CLI'),
-  client: createLogger('Client'),
-  channel: createLogger('Channel'),
-  auth: createLogger('Auth'),
-  server: createLogger('Server'),
-  ws: createLogger('WS'),
-  api: createLogger('API'),
+  cli: createLogger('gchat-CLI'),
+  client: createLogger('gchat-Client'),
+  channel: createLogger('gchat-Channel'),
+  auth: createLogger('gchat-Auth'),
+  server: createLogger('gchat-Server'),
+  ws: createLogger('gchat-WS'),
+  api: createLogger('gchat-API'),
 };
 
 export default log;

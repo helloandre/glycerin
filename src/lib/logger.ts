@@ -37,11 +37,14 @@ class Logger {
   private enabled: boolean;
 
   constructor() {
-    // Enable logging based on DEBUG or GLYCERIN_LOG_LEVEL environment variables
+    // Enable logging based on DEBUG, GLYCERIN_LOG_LEVEL, or LOG_LEVEL environment variables
+    // LOG_LEVEL is used by google-chat-api vendor code
     this.enabled =
-      process.env.DEBUG === 'true' || !!process.env.GLYCERIN_LOG_LEVEL;
+      process.env.DEBUG === 'true' ||
+      !!process.env.GLYCERIN_LOG_LEVEL ||
+      !!process.env.LOG_LEVEL;
     this.logLevel = this.parseLogLevel(
-      process.env.GLYCERIN_LOG_LEVEL || 'INFO'
+      process.env.GLYCERIN_LOG_LEVEL || process.env.LOG_LEVEL || 'INFO'
     );
   }
 
