@@ -6,6 +6,7 @@
 import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
 import { useIsLoading } from '../context/AppContext.js';
+import { colors } from '../theme/colors.js';
 
 interface LoadingIndicatorProps {
   loadingKey?: string;
@@ -22,10 +23,10 @@ export function LoadingIndicator({
 
   return (
     <Box>
-      <Text color="cyan">
+      <Text color={colors.accent.focusPrimary}>
         <Spinner type="dots" />
       </Text>
-      <Text> {message}</Text>
+      <Text color={colors.text.secondary}> {message}</Text>
     </Box>
   );
 }

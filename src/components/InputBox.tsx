@@ -3,8 +3,7 @@
  * Text input for sending messages
  */
 
-import { Box, Text, useInput } from 'ink';
-import TextInput from 'ink-text-input';
+import { Box, Text } from 'ink';
 import { useEffect, useState } from 'react';
 import type { SendMessageResult } from '../../vendor/google-chat-api/index.js';
 import {
@@ -15,6 +14,9 @@ import {
 import { useFocus } from '../hooks/useFocus.js';
 import type { GlycerinChatClient } from '../lib/chat-client.js';
 import { logger } from '../lib/logger.js';
+import { colors } from '../theme/colors.js';
+import { ControlledInput } from './common/ControlledInput.js';
+import { Panel } from './common/Panel.js';
 
 interface InputBoxProps {
   client: GlycerinChatClient;
@@ -28,15 +30,40 @@ export function InputBox({ client }: InputBoxProps) {
   const [value, setValue] = useState('');
   const [sending, setSending] = useState(false);
 
-  // Handle escape to go to messages (so user can scroll)
-  useInput(
-    (_input, key) => {
-      if (key.escape && isFocused) {
-        dispatch({ type: 'FOCUS_CHANGED', payload: 'messages' });
+  // Handle hotkeys for scrolling messages and navigation
+  const handleKeyPress = (input: string, key: any): boolean => {
+    // Handle scroll keys
+    if (key.ctrl) {
+      if (input === 'i') {
+        dispatch({ type: 'MESSAGES_SCROLL_DOWN' });
+        return true; // Prevent default input processing
       }
-    },
-    { isActive: isFocused }
-  );
+      if (input === 'u') {
+        dispatch({ type: 'MESSAGES_SCROLL_UP' });
+        return true;
+      }
+      if (input === 'g') {
+        dispatch({ type: 'MESSAGES_SCROLL_TO_BOTTOM' });
+        return true;
+      }
+      if (input === 'l') {
+        dispatch({ type: 'MESSAGES_SCROLL_TO_TOP' });
+        return true;
+      }
+    }
+
+    // Handle escape for navigation
+    if (key.escape) {
+      if (currentChat?.type === 'dm') {
+        dispatch({ type: 'FOCUS_CHANGED', payload: 'chats' });
+      } else {
+        dispatch({ type: 'FOCUS_CHANGED', payload: 'threads' });
+      }
+      return true;
+    }
+
+    return false; // Allow default input processing
+  };
 
   // Clear input text when focus leaves the input panel
   useEffect(() => {
@@ -105,33 +132,40 @@ export function InputBox({ client }: InputBoxProps) {
     canInput = false;
   }
 
+  // Height: 2 lines for input area + 2 lines for chrome (header + margin)
+  const inputBoxHeight = 4;
+
   return (
-    <Box
-      flexDirection="column"
+    <Panel
+      level={4}
+      isFocused={isFocused}
+      height={inputBoxHeight}
       flexShrink={0}
-      height={4}
-      borderStyle="single"
-      borderColor={isFocused ? 'cyan' : 'gray'}
       paddingX={1}
+      flexDirection="column"
     >
       <Box marginBottom={1}>
-        <Text bold color={isFocused ? 'cyan' : 'gray'}>
+        <Text
+          bold
+          color={isFocused ? colors.accent.focusBright : colors.text.muted}
+        >
           {sending ? 'Sending...' : 'Message'}
         </Text>
       </Box>
 
       {!canInput ? (
-        <Text color="gray">{emptyStateMessage}</Text>
+        <Text color={colors.text.muted}>{emptyStateMessage}</Text>
       ) : isFocused ? (
-        <TextInput
+        <ControlledInput
           value={value}
           onChange={setValue}
           onSubmit={handleSubmit}
+          onKeyPress={handleKeyPress}
           placeholder="Type a message..."
         />
       ) : (
-        <Text color="gray">Press Enter to focus input</Text>
+        <Text color={colors.text.muted}>Press Enter to focus input</Text>
       )}
-    </Box>
+    </Panel>
   );
 }

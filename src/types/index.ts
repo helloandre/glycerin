@@ -45,7 +45,6 @@ export interface Thread extends Topic {
 export type FocusTarget =
   | 'chats'
   | 'threads'
-  | 'messages'
   | 'input'
   | 'search'
   | 'confirmation';
@@ -94,12 +93,14 @@ export interface AppState {
 
   // UI state
   focused: FocusTarget;
+  previousFocus: FocusTarget | null; // Previous focus target (for restoration)
   loading: Record<string, boolean>;
   chatSearchTrigger: number; // Timestamp to trigger chat search mode
   chatDisplayMode: ChatDisplayMode; // Display mode for chats panel
   showOnlyUnread: boolean; // Filter to show only unread items
   showMuted: boolean; // Show muted chats
   confirmationModal: ConfirmationModal | null; // Confirmation modal state
+  messagesScrollOffset: number; // Scroll offset for messages panel
 }
 
 // Action types for state reducer
@@ -128,6 +129,7 @@ export type AppAction =
   | { type: 'SEARCH_CLOSED' }
   | { type: 'SEARCH_RESULTS'; payload: Chat[] }
   | { type: 'CHAT_SEARCH_OPENED' }
+  | { type: 'CHAT_SEARCH_CLOSED' }
   | { type: 'FOCUS_CHANGED'; payload: FocusTarget }
   | { type: 'MARK_READ'; payload: { chatId: string; threadId?: string } }
   | { type: 'LOADING_START'; payload: string }
@@ -139,7 +141,12 @@ export type AppAction =
   | { type: 'CHAT_MUTE_TOGGLED'; payload: { chatId: string } }
   | { type: 'CONFIRMATION_OPENED'; payload: ConfirmationModal }
   | { type: 'CONFIRMATION_CLOSED' }
-  | { type: 'CHAT_LEFT'; payload: { chatId: string } };
+  | { type: 'CHAT_LEFT'; payload: { chatId: string } }
+  | { type: 'MESSAGES_SCROLL_UP' }
+  | { type: 'MESSAGES_SCROLL_DOWN' }
+  | { type: 'MESSAGES_SCROLL_TO_TOP' }
+  | { type: 'MESSAGES_SCROLL_TO_BOTTOM' }
+  | { type: 'MESSAGES_SCROLL_RESET' };
 
 // App actions interface
 export interface AppActions {

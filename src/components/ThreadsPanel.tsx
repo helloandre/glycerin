@@ -16,7 +16,9 @@ import {
 } from '../context/AppContext.js';
 import { useFocus } from '../hooks/useFocus.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
+import { colors } from '../theme/colors.js';
 import type { Thread } from '../types/index.js';
+import { Panel } from './common/Panel.js';
 
 interface ThreadsPanelProps {
   onLoadMore: (chatId: string) => Promise<void>;
@@ -33,35 +35,29 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
 
-  // Reverse threads so most recent is at the bottom
-  const reversedThreads = useMemo(() => [...threads].reverse(), [threads]);
+  // Use threads directly (sorted oldest to newest, most recent at bottom)
+  const sortedThreads = threads;
 
-  // Dynamic viewport height based on terminal size
-  // ThreadsPanel takes 30% of available space
+  // Fixed viewport height: 10 threads
   // Panel header: 2 lines (title + margin)
-  // Panel borders: 2 lines (top + bottom border)
   const { stdout } = useStdout();
-  const headerFooterOverhead = 4; // header + borders
-  const calculatedPanelHeight = Math.floor(stdout.rows * 0.3);
-  const viewportHeight = Math.max(
-    3,
-    calculatedPanelHeight - headerFooterOverhead
-  );
+  const headerFooterOverhead = 2; // header + margin only (no borders)
+  const viewportHeight = 10;
 
   // Update selected index when current thread changes
   useEffect(() => {
     if (currentThread) {
-      const index = reversedThreads.findIndex(
+      const index = sortedThreads.findIndex(
         t => t.topic_id === currentThread.topic_id
       );
       if (index !== -1) {
         setSelectedIndex(index);
       }
-    } else if (reversedThreads.length > 0) {
-      // Default to the most recent thread (last in reversed list = bottom)
-      setSelectedIndex(reversedThreads.length - 1);
+    } else if (sortedThreads.length > 0) {
+      // Default to the most recent thread (last in list = bottom)
+      setSelectedIndex(sortedThreads.length - 1);
     }
-  }, [currentThread, reversedThreads]);
+  }, [currentThread?.topic_id, sortedThreads.length]);
 
   // Auto-scroll to keep selected item visible
   useEffect(() => {
@@ -89,10 +85,8 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
       k: () => handleUp(),
       up: () => handleUp(),
       g: () => setSelectedIndex(0),
-      'shift+g': () =>
-        setSelectedIndex(Math.max(0, reversedThreads.length - 1)),
+      'shift+g': () => setSelectedIndex(Math.max(0, sortedThreads.length - 1)),
       pagedown: () => handleLoadMore(),
-      'ctrl+d': () => handleLoadMore(),
       enter: () => handleSelect(),
       'ctrl+n': () => handleNewThread(),
       escape: () => dispatch({ type: 'FOCUS_CHANGED', payload: 'chats' }),
@@ -101,7 +95,7 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
   );
 
   const handleDown = () => {
-    setSelectedIndex(Math.min(reversedThreads.length - 1, selectedIndex + 1));
+    setSelectedIndex(Math.min(sortedThreads.length - 1, selectedIndex + 1));
   };
 
   const handleUp = () => {
@@ -109,7 +103,7 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
   };
 
   const handleSelect = () => {
-    const thread = reversedThreads[selectedIndex];
+    const thread = sortedThreads[selectedIndex];
     if (thread) {
       dispatch({ type: 'THREAD_SELECTED', payload: thread });
     }
@@ -135,13 +129,12 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return '< 1 min ago';
-    if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? '' : 's'} ago`;
-    if (diffHours < 24)
-      return `${diffHours} hr${diffHours === 1 ? '' : 's'} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    if (diffMins < 1) return '< 1 min';
+    if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? '' : 's'}`;
+    if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? '' : 's'}`;
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
     const diffWeeks = Math.floor(diffDays / 7);
-    return `${diffWeeks} week${diffWeeks === 1 ? '' : 's'} ago`;
+    return `${diffWeeks} week${diffWeeks === 1 ? '' : 's'}`;
   };
 
   const formatThreadLine = (
@@ -152,17 +145,21 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
     const isSelected = index === selectedIndex;
 
     // Determine colors
-    let color = 'white';
+    let color: string = colors.text.primary;
     if (isFocused) {
-      color = isSelected ? 'cyan' : 'white';
+      color = isSelected ? colors.accent.focusBright : colors.text.primary;
     } else {
-      color = isSelected ? 'gray' : 'gray';
+      color = isSelected ? colors.text.secondary : colors.text.muted;
     }
 
     // Get first message as thread preview
     const firstMessage = thread.replies?.[0];
     const userName = firstMessage?.sender || 'Unknown';
-    const messageText = firstMessage?.text || 'No messages';
+    // Remove newlines and extra whitespace from message text to ensure single line
+    const messageText = (firstMessage?.text || 'No messages')
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     const threadCreatedTime = firstMessage?.timestamp_usec;
 
     // Calculate reply info
@@ -171,26 +168,25 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
     const createdTimeAgo = formatTimeAgo(threadCreatedTime);
     const lastReplyTimeAgo = formatTimeAgo(lastReplyTime);
 
-    // Format: <name> (X minutes ago): <thread preview> (Y replies, Z minutes ago)
-    const replySuffix =
+    // Format reply count to appear after timestamp
+    const replyInfo =
       replyCount > 0
-        ? ` (${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}, ${lastReplyTimeAgo})`
+        ? ` [${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}, ${lastReplyTimeAgo}]`
         : '';
 
     // Add indicators
     const unreadIndicator = thread.isUnread ? '● ' : '  ';
     const selectionIndicator = isSelected ? '❯ ' : '  ';
 
-    // Build the prefix: <name> (X minutes ago):
-    const prefix = `${userName} (${createdTimeAgo}): `;
+    // Build the prefix: <name> (X minutes ago) [X replies]:
+    const prefix = `${userName} (${createdTimeAgo})${replyInfo}: `;
 
     // Calculate available width for message text
-    // Account for: selection indicator + unread + prefix + reply suffix + padding
+    // Account for: selection indicator + unread + prefix + padding
     const prefixLength = selectionIndicator.length + unreadIndicator.length;
-    const suffixLength = replySuffix.length;
     const messageMaxLength = Math.max(
       10,
-      availableWidth - prefixLength - prefix.length - suffixLength - 2
+      availableWidth - prefixLength - prefix.length - 2
     );
 
     let truncatedMessage = messageText;
@@ -203,28 +199,28 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
         <Text color={color} bold={isSelected && isFocused} wrap="truncate-end">
           {selectionIndicator}
           {unreadIndicator}
-          <Text color="cyan">{userName}</Text>
-          {` (${createdTimeAgo}): `}
-          {truncatedMessage}
-          {replySuffix && <Text dimColor>{replySuffix}</Text>}
+          <Text color={colors.accent.focusPrimary}>{userName}</Text>
+          {` (${createdTimeAgo})`}
+          {replyInfo && <Text dimColor>{replyInfo}</Text>}
+          {`: ${truncatedMessage}`}
         </Text>
       </Box>
     );
   };
 
   // Calculate visible threads based on viewport
-  const visibleThreads = reversedThreads.slice(
+  const visibleThreads = sortedThreads.slice(
     scrollOffset,
     scrollOffset + viewportHeight
   );
-  const hasMore = scrollOffset + viewportHeight < reversedThreads.length;
+  const hasMore = scrollOffset + viewportHeight < sortedThreads.length;
   const hasScrolledUp = scrollOffset > 0;
 
   // Determine if we should show threads panel content
   const showThreads = currentChat && currentChat.type === 'space';
 
-  // Calculate explicit height: 30% of terminal height
-  const threadsPanelHeight = Math.floor(stdout.rows * 0.3);
+  // Calculate explicit height: 10 threads + chrome (header + margin)
+  const threadsPanelHeight = viewportHeight + headerFooterOverhead;
 
   // Calculate available width for threads panel
   // Chats panel takes 25%, threads panel takes remaining 75%
@@ -232,40 +228,44 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
   const contentWidth = threadsPanelWidth - 4; // Account for borders and padding
 
   return (
-    <Box
-      flexDirection="column"
+    <Panel
+      level={2}
+      isFocused={isFocused}
       height={threadsPanelHeight}
-      flexGrow={1}
-      flexShrink={1}
-      minHeight={0}
-      borderStyle="single"
-      borderColor={isFocused ? 'cyan' : 'gray'}
+      flexGrow={0}
+      flexShrink={0}
       paddingX={1}
+      flexDirection="column"
     >
       <Box marginBottom={1}>
-        <Text bold color={isFocused ? 'cyan' : 'gray'}>
+        <Text
+          bold
+          color={isFocused ? colors.accent.focusBright : colors.text.muted}
+        >
           {currentChat?.name || 'Threads'}
         </Text>
         {isLoading && (
           <>
-            <Text color="gray"> </Text>
-            <Text color="yellow">Loading...</Text>
+            <Text color={colors.text.muted}> </Text>
+            <Text color={colors.semantic.warning}>Loading...</Text>
           </>
         )}
       </Box>
 
       <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
         {!showThreads ? (
-          <Text color="gray">Direct messages don't have threads</Text>
-        ) : reversedThreads.length === 0 ? (
-          <Text color="gray">
+          <Text color={colors.text.muted}>
+            Direct messages don't have threads
+          </Text>
+        ) : sortedThreads.length === 0 ? (
+          <Text color={colors.text.muted}>
             {isLoading ? 'Loading threads...' : 'No threads in this space'}
           </Text>
         ) : (
           <>
             {hasScrolledUp && (
               <Box>
-                <Text color="gray" dimColor>
+                <Text color={colors.text.muted} dimColor>
                   ↑ {scrollOffset} more
                 </Text>
               </Box>
@@ -276,24 +276,22 @@ export function ThreadsPanel({ onLoadMore }: ThreadsPanelProps) {
             })}
             {hasMore && (
               <Box>
-                <Text color="gray" dimColor>
-                  ↓ {reversedThreads.length - (scrollOffset + viewportHeight)}{' '}
+                <Text color={colors.text.muted} dimColor>
+                  ↓ {sortedThreads.length - (scrollOffset + viewportHeight)}{' '}
                   more
                 </Text>
               </Box>
             )}
-            {pagination.hasMore && !hasMore && (
+            {pagination.hasMore && !hasMore && isLoading && (
               <Box>
-                <Text color="cyan" dimColor>
-                  {isLoading
-                    ? 'Loading...'
-                    : `${pagination.hasMore ? 'Ctrl+D: Load older threads' : ''}`}
+                <Text color={colors.accent.focusPrimary} dimColor>
+                  Loading...
                 </Text>
               </Box>
             )}
           </>
         )}
       </Box>
-    </Box>
+    </Panel>
   );
 }

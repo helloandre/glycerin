@@ -15,7 +15,9 @@ import {
 import { useFocus } from '../hooks/useFocus.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
 import { getChatClient } from '../lib/chat-client.js';
+import { colors } from '../theme/colors.js';
 import type { Chat } from '../types/index.js';
+import { Panel } from './common/Panel.js';
 
 type PanelMode = 'normal' | 'search' | 'browse';
 
@@ -56,12 +58,12 @@ export function ChatsPanel() {
   // Apply display mode filtering
   let displayChats = searchFilteredChats;
 
-  if (mode === 'normal') {
-    // Filter out muted chats if showMuted is false
-    if (!showMuted) {
-      displayChats = displayChats.filter(chat => !chat.isMuted);
-    }
+  // Filter out muted chats if showMuted is false (applies to all modes)
+  if (!showMuted) {
+    displayChats = displayChats.filter(chat => !chat.isMuted);
+  }
 
+  if (mode === 'normal') {
     if (displayMode === 'mentions') {
       // Show only chats with mentions
       displayChats = displayChats.filter(chat => chat.hasMention);
@@ -122,16 +124,14 @@ export function ChatsPanel() {
   // Calculate viewport height based on terminal height
   //
   // Layout breakdown:
-  // - Title bar: 3 lines (1 text + 2 borders)
+  // - Title bar: 3 lines (1 text + 2 padding)
   // - ChatsPanel chrome:
-  //   - Top border: 1 line
-  //   - Header input box: 1 line
+  //   - Header: 1 line
   //   - Header margin: 1 line
-  //   - Bottom border: 1 line
   //
-  // Total overhead: 3 (title) + 2 (borders) + 2 (header)
+  // Total overhead: 3 (title) + 2 (header)
   const titleBarHeight = 3;
-  const chatsPanelChrome = 4; // borders + header
+  const chatsPanelChrome = 2; // header + margin only (no borders)
   const availableHeight = stdout.rows - titleBarHeight - chatsPanelChrome;
   const viewportHeight = Math.max(5, availableHeight);
 
@@ -236,8 +236,15 @@ export function ChatsPanel() {
       setMode('normal');
       setSearchQuery('');
       setPreviewedRoom(null);
+      dispatch({ type: 'CHAT_SEARCH_CLOSED' });
+    } else if (key.upArrow) {
+      // Navigate up in filtered list
+      handleUp();
+    } else if (key.downArrow) {
+      // Navigate down in filtered list
+      handleDown();
     } else if (key.ctrl && input === 'l' && mode === 'search') {
-      // Handle leave space in search mode only (not browse mode)
+      // Handle leave space in search mode (requires ctrl modifier since 'l' is used for typing)
       handleLeaveSpace();
     } else if (key.backspace || key.delete) {
       setSearchQuery(prev => prev.slice(0, -1));
@@ -277,13 +284,8 @@ export function ChatsPanel() {
         }
       },
       enter: () => handleSelect(),
-      'ctrl+n': () => handleNewThread(),
-      'ctrl+f': () => {
-        if (mode === 'normal') {
-          setMode('search');
-        }
-      },
-      'ctrl+b': () => {
+      n: () => handleNewThread(),
+      b: () => {
         if (mode === 'normal') {
           setMode('browse');
         } else if (mode === 'browse') {
@@ -292,12 +294,12 @@ export function ChatsPanel() {
           setPreviewedRoom(null);
         }
       },
-      'ctrl+j': () => {
+      o: () => {
         if (mode === 'browse') {
           handleJoinRoom();
         }
       },
-      'ctrl+u': () => {
+      u: () => {
         if (
           mode === 'normal' &&
           (displayMode === 'home' || displayMode === 'mentions')
@@ -305,12 +307,12 @@ export function ChatsPanel() {
           dispatch({ type: 'SHOW_ONLY_UNREAD_TOGGLED' });
         }
       },
-      'ctrl+m': () => {
+      m: () => {
         if (mode === 'normal') {
           dispatch({ type: 'SHOW_MUTED_TOGGLED' });
         }
       },
-      'ctrl+shift+m': () => {
+      'shift+m': () => {
         if (mode === 'normal') {
           const item = displayItems[selectedIndex];
           if (item && item.type === 'chat') {
@@ -340,7 +342,7 @@ export function ChatsPanel() {
           setSelectedIndex(0);
         }
       },
-      'ctrl+l': () => {
+      l: () => {
         if (mode === 'normal') {
           handleLeaveSpace();
         }
@@ -350,6 +352,7 @@ export function ChatsPanel() {
           setMode('normal');
           setSearchQuery('');
           setPreviewedRoom(null);
+          dispatch({ type: 'CHAT_SEARCH_CLOSED' });
         }
       },
     },
@@ -427,11 +430,14 @@ export function ChatsPanel() {
         });
       }
     } else {
-      dispatch({ type: 'CHAT_SELECTED', payload: chat });
+      // Exit search mode first, then dispatch CHAT_SELECTED
+      // This ensures CHAT_SELECTED's focus change (to 'threads' for spaces) takes effect
       if (mode === 'search') {
         setMode('normal');
         setSearchQuery('');
+        dispatch({ type: 'CHAT_SEARCH_CLOSED' });
       }
+      dispatch({ type: 'CHAT_SELECTED', payload: chat });
     }
   };
 
@@ -492,7 +498,7 @@ export function ChatsPanel() {
     if (item.type === 'section') {
       return (
         <Box key={`section-${item.title}`}>
-          <Text color="blue" bold>
+          <Text color={colors.accent.focusPrimary} bold>
             {item.title}
           </Text>
         </Box>
@@ -506,35 +512,47 @@ export function ChatsPanel() {
     const isBrowse = mode === 'browse';
     const isPreviewed = isBrowse && previewedRoom?.id === chat.id;
 
-    // Determine colors - browse mode uses magenta, normal/search uses cyan
-    let color = 'white';
+    // Determine colors - browse mode uses magenta, normal/search uses blue
+    let color: string = colors.text.primary;
     if (isBrowse) {
       if (isFocused) {
-        color = isPreviewed ? 'yellow' : isSelected ? 'magenta' : 'white';
+        color = isPreviewed
+          ? colors.semantic.warning
+          : isSelected
+            ? colors.semantic.magenta
+            : colors.text.primary;
       } else {
-        color = 'gray';
+        color = colors.text.muted;
       }
     } else {
       if (isFocused) {
-        color = isSelected ? 'cyan' : 'white';
+        color = isSelected ? colors.accent.focusBright : colors.text.primary;
       } else {
-        color = isSelected ? 'gray' : 'gray';
+        color = isSelected ? colors.text.secondary : colors.text.muted;
       }
     }
 
-    // Build display name
-    let displayName = chat.name || chat.id;
-    if (displayName.length > 20) {
-      displayName = `${displayName.substring(0, 17)}...`;
-    }
-
-    // Add indicators
-    const unreadIndicator = chat.isUnread ? '● ' : '  ';
-    const typeIndicator = chat.type === 'dm' ? '👤 ' : '# ';
+    // Calculate available width for display name
+    // Panel is 25% of terminal width, minus padding (2), border (2), and indicators
+    const panelWidth = Math.floor(stdout.columns * 0.25);
     const selectionIndicator = isSelected ? '❯ ' : '  ';
-    const previewIndicator = isPreviewed ? '👁 ' : '';
+    const unreadIndicator = chat.isUnread ? '● ' : '  ';
     const mentionIndicator = chat.hasMention ? '@' : '';
-    const mutedIndicator = chat.isMuted ? '🔇 ' : '';
+
+    // Calculate space used by indicators (excluding browse mode unread indicator)
+    const indicatorsWidth =
+      selectionIndicator.length +
+      (!isBrowse ? unreadIndicator.length : 0) +
+      (mentionIndicator ? mentionIndicator.length + 1 : 0); // +1 for space after @
+
+    // Available width for name: panel width - padding - border - indicators
+    const availableWidth = panelWidth - 4 - indicatorsWidth;
+
+    // Build display name with dynamic truncation
+    let displayName = chat.name || chat.id;
+    if (displayName.length > availableWidth) {
+      displayName = `${displayName.substring(0, availableWidth - 3)}...`;
+    }
 
     return (
       <Box key={chat.id}>
@@ -545,10 +563,7 @@ export function ChatsPanel() {
         >
           {selectionIndicator}
           {!isBrowse && unreadIndicator}
-          {!isBrowse && typeIndicator}
-          {previewIndicator}
           {mentionIndicator && `${mentionIndicator} `}
-          {mutedIndicator}
           {displayName}
         </Text>
       </Box>
@@ -564,18 +579,20 @@ export function ChatsPanel() {
   const hasScrolledUp = scrollOffset > 0;
 
   // Determine border color based on mode
-  let borderColor = isFocused ? 'cyan' : 'gray';
+  let borderColor: string | undefined;
   if (mode === 'browse' && isFocused) {
-    borderColor = 'magenta';
+    borderColor = colors.semantic.magenta;
   }
 
   // Determine placeholder text and color for input box
   let placeholderText = 'Rooms & DMs';
-  let inputColor = isFocused ? 'cyan' : 'gray';
+  let inputColor: string = isFocused
+    ? colors.accent.focusBright
+    : colors.text.muted;
 
   if (mode === 'browse') {
     placeholderText = 'Browse Rooms';
-    inputColor = isFocused ? 'magenta' : 'gray';
+    inputColor = isFocused ? colors.semantic.magenta : colors.text.muted;
   } else if (mode === 'search') {
     placeholderText = 'Search';
   } else if (mode === 'normal') {
@@ -599,15 +616,61 @@ export function ChatsPanel() {
     mode === 'search' || mode === 'browse' ? searchQuery : placeholderText;
 
   return (
-    <Box
-      flexDirection="column"
+    <Panel
+      level={1}
+      isFocused={isFocused}
+      borderColor={borderColor}
+      backgroundColor="gray"
       width="25%"
       flexGrow={1}
-      minHeight={0}
-      borderStyle="single"
-      borderColor={borderColor}
       paddingX={1}
+      flexDirection="column"
     >
+      <ChatsPanelContent
+        displayText={displayText}
+        inputColor={inputColor}
+        loadingRooms={loadingRooms}
+        displayItems={displayItems}
+        hasScrolledUp={hasScrolledUp}
+        scrollOffset={scrollOffset}
+        visibleItems={visibleItems}
+        formatDisplayItem={formatDisplayItem}
+        hasMore={hasMore}
+        viewportHeight={viewportHeight}
+        mode={mode}
+      />
+    </Panel>
+  );
+}
+
+// Content component
+function ChatsPanelContent({
+  displayText,
+  inputColor,
+  loadingRooms,
+  displayItems,
+  hasScrolledUp,
+  scrollOffset,
+  visibleItems,
+  formatDisplayItem,
+  hasMore,
+  viewportHeight,
+  mode,
+}: {
+  displayText: string;
+  inputColor: string;
+  loadingRooms: boolean;
+  displayItems: any[];
+  hasScrolledUp: boolean;
+  scrollOffset: number;
+  visibleItems: any[];
+  formatDisplayItem: (item: any, index: number) => JSX.Element;
+  hasMore: boolean;
+  viewportHeight: number;
+  mode: string;
+}) {
+  return (
+    <>
       <Box marginBottom={1}>
         <Text bold color={inputColor}>
           {displayText}
@@ -616,16 +679,16 @@ export function ChatsPanel() {
 
       <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
         {loadingRooms ? (
-          <Text color="gray">Loading rooms...</Text>
+          <Text color={colors.text.muted}>Loading rooms...</Text>
         ) : displayItems.length === 0 ? (
-          <Text color="gray">
+          <Text color={colors.text.muted}>
             {mode === 'search' ? 'No matches' : 'No chats available'}
           </Text>
         ) : (
           <>
             {hasScrolledUp && (
               <Box>
-                <Text color="gray" dimColor>
+                <Text color={colors.text.muted} dimColor>
                   ↑ {scrollOffset} more above
                 </Text>
               </Box>
@@ -636,7 +699,7 @@ export function ChatsPanel() {
             })}
             {hasMore && (
               <Box>
-                <Text color="gray" dimColor>
+                <Text color={colors.text.muted} dimColor>
                   ↓ {displayItems.length - (scrollOffset + viewportHeight)} more
                   below
                 </Text>
@@ -645,6 +708,6 @@ export function ChatsPanel() {
           </>
         )}
       </Box>
-    </Box>
+    </>
   );
 }

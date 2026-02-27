@@ -27,12 +27,14 @@ const initialState: AppState = {
   threadsPagination: {},
   unread: [],
   focused: 'chats',
+  previousFocus: null,
   loading: {},
   chatSearchTrigger: 0,
   chatDisplayMode: savedPreferences.chatDisplayMode,
   showOnlyUnread: savedPreferences.showOnlyUnread,
   showMuted: savedPreferences.showMuted,
   confirmationModal: null,
+  messagesScrollOffset: 0,
 };
 
 // Reducer function
@@ -72,6 +74,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           thread: action.payload.topic_id,
         },
         focused: 'input',
+        messagesScrollOffset: 0,
       };
 
     case 'NEW_THREAD_STARTED':
@@ -251,8 +254,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'CHAT_SEARCH_OPENED':
       return {
         ...state,
+        previousFocus: state.focused,
         focused: 'chats',
         chatSearchTrigger: Date.now(),
+      };
+
+    case 'CHAT_SEARCH_CLOSED':
+      return {
+        ...state,
+        focused: state.previousFocus || 'chats',
+        previousFocus: null,
+        chatSearchTrigger: 0,
       };
 
     case 'FOCUS_CHANGED':
@@ -401,6 +413,37 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
+    case 'MESSAGES_SCROLL_UP':
+      return {
+        ...state,
+        messagesScrollOffset: Math.max(0, state.messagesScrollOffset - 1),
+      };
+
+    case 'MESSAGES_SCROLL_DOWN':
+      return {
+        ...state,
+        messagesScrollOffset: state.messagesScrollOffset + 1,
+      };
+
+    case 'MESSAGES_SCROLL_TO_TOP':
+      return {
+        ...state,
+        messagesScrollOffset: 0,
+      };
+
+    case 'MESSAGES_SCROLL_TO_BOTTOM':
+      return {
+        ...state,
+        messagesScrollOffset: Number.MAX_SAFE_INTEGER,
+      };
+
+    case 'MESSAGES_SCROLL_RESET':
+      // Reset to bottom (newest messages) - will be clamped by UI
+      return {
+        ...state,
+        messagesScrollOffset: Number.MAX_SAFE_INTEGER,
+      };
+
     default:
       return state;
   }
@@ -480,7 +523,9 @@ export function useThreads() {
   if (!state.active.chat) return [];
   const chatThreads = state.threads[state.active.chat] || {};
   return Object.values(chatThreads).sort(
-    (a, b) => (a.sort_time || 0) - (b.sort_time || 0)
+    (a, b) =>
+      (a.replies?.[0]?.timestamp_usec || 0) -
+      (b.replies?.[0]?.timestamp_usec || 0)
   );
 }
 

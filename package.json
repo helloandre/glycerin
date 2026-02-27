@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "better-sqlite3": "^12.6.0",
+    "chalk": "^5.6.2",
     "commander": "^12.0.0",
     "docopt": "^0.6.2",
     "dotenv": "^16.6.1",

@@ -6,6 +6,7 @@
 import { Box, Text, useInput } from 'ink';
 import { useAppState } from '../context/AppContext.js';
 import { useFocus } from '../hooks/useFocus.js';
+import { colors } from '../theme/colors.js';
 
 export function ConfirmationModal() {
   const { state, dispatch } = useAppState();
@@ -49,33 +50,33 @@ export function ConfirmationModal() {
 
       {/* Modal box */}
       <Box
-        borderStyle="double"
-        borderColor="yellow"
+        borderStyle="single"
+        borderColor={colors.accent.focusPrimary}
         paddingX={2}
         paddingY={1}
         flexDirection="column"
         minWidth={40}
       >
         <Box marginBottom={1}>
-          <Text bold color="yellow">
+          <Text bold color={colors.accent.focusPrimary}>
             {modal.title}
           </Text>
         </Box>
 
         <Box marginBottom={1}>
-          <Text>{modal.message}</Text>
+          <Text color={colors.text.primary}>{modal.message}</Text>
         </Box>
 
         <Box justifyContent="center">
           <Text>
-            <Text bold color="green">
+            <Text bold color={colors.semantic.success}>
               [Y]
             </Text>
-            <Text> Yes </Text>
-            <Text bold color="red">
+            <Text color={colors.text.primary}> Yes </Text>
+            <Text bold color={colors.semantic.error}>
               [N]
             </Text>
-            <Text> No</Text>
+            <Text color={colors.text.primary}> No</Text>
           </Text>
         </Box>
       </Box>

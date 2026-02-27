@@ -9,6 +9,7 @@ import { AppStateProvider, useAppState } from '../context/AppContext.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
 import type { GlycerinChatClient } from '../lib/chat-client.js';
 import { logger } from '../lib/logger.js';
+import { colors } from '../theme/colors.js';
 import type { Chat } from '../types/index.js';
 import { ChatsPanel } from './ChatsPanel.js';
 import { ConfirmationModal } from './ConfirmationModal.js';
@@ -28,13 +29,21 @@ function AppContent({ client }: AppProps) {
   const { exit } = useApp();
 
   // Global hotkeys (work regardless of focus, except when input is focused)
+  // Global hotkeys that work from anywhere (including input)
   useKeyHandler(
     {
       'ctrl+c': () => exit(),
       'ctrl+f': () => {
-        // TODO: Implement search modal
-        logger.info('Search not yet implemented');
+        // Open chat search/filter mode
+        dispatch({ type: 'CHAT_SEARCH_OPENED' });
       },
+    },
+    { enabled: true }
+  );
+
+  // Global hotkeys that don't work from input (so you can type these characters)
+  useKeyHandler(
+    {
       '/': () => {
         // Open chat search/filter mode
         dispatch({ type: 'CHAT_SEARCH_OPENED' });
@@ -96,7 +105,7 @@ function AppContent({ client }: AppProps) {
           sortTimestamp: item.lastMentionTime || 0,
           isUnread: (item.unreadCount || 0) > 0,
           normalizedName: (item.name || item.id).toLowerCase(),
-          hasMention: item.lastMentionTime && item.lastMentionTime > 0,
+          hasMention: item.notificationCategory === 'direct_mention',
           isMuted: item.isMuted || false,
         }));
         dispatch({ type: 'CHATS_LOADED', payload: chats });
@@ -197,35 +206,32 @@ function AppContent({ client }: AppProps) {
   const getNavigationHints = () => {
     switch (state.focused) {
       case 'chats':
-        return '1/2/3:home/mentions/list j/k:navigate g/G:top/bottom ^n:new ^f:search ^b:browse ^l:leave ^u:unread ^m:muted ⏎:select';
+        return '1/2/3:home/mentions/list j/k:up/down g/G:top/bottom n:new /:search b:browse l:leave u:unread m:muted M:mute ⏎:select';
       case 'threads':
-        return 'j/k:navigate g/G:top/bottom ^N:new thread ^D:load more esc:back ⏎:select';
-      case 'messages':
-        return '^K/^J:scroll ^G/^L:top/bottom esc:back ⏎:reply';
+        return 'j/k:up/down g/G:top/bottom ^n:new thread /:filter esc:back ⏎:select';
       case 'input':
-        return 'esc:back ⏎:send';
+        return '^j/^k:up/down ^g/^l:top/bottom /:filter esc:back ⏎:send';
       default:
-        return 'Ctrl+C:quit /:filter';
+        return 'Ctrl+C:quit ^f:filter';
     }
   };
 
   return (
     <Box flexDirection="column" height={stdout.rows} minHeight={stdout.rows}>
-      {/* Title Bar */}
+      {/* Title Bar - No borders, gradient background */}
       <Box
-        borderStyle="single"
-        borderColor="cyan"
-        paddingX={1}
+        paddingX={2}
+        paddingY={1}
         flexShrink={0}
         minHeight={0}
         justifyContent="space-between"
       >
         <Box>
-          <Text bold color="cyan">
-            Glycerin - Google Chat TUI
+          <Text bold color={colors.accent.focusBright}>
+            Glycerin
           </Text>
-          <Text color="gray"> | </Text>
-          <Text color="gray">{getNavigationHints()}</Text>
+          <Text color={colors.text.muted}> | </Text>
+          <Text color={colors.text.secondary}>{getNavigationHints()}</Text>
         </Box>
         <Box>
           <LoadingIndicator loadingKey="chats" message="Loading chats..." />
@@ -235,7 +241,7 @@ function AppContent({ client }: AppProps) {
             message="Loading messages..."
           />
           {Object.keys(state.loading).length === 0 && (
-            <Text color="green">✓ Ready</Text>
+            <Text color={colors.accent.focusPrimary}>✓ Ready</Text>
           )}
         </Box>
       </Box>
@@ -248,7 +254,10 @@ function AppContent({ client }: AppProps) {
         {/* Right Side - Threads, Messages, Input */}
         <Box flexDirection="column" width="75%" flexGrow={1} minHeight={0}>
           <ThreadsPanel onLoadMore={loadMoreThreads} />
-          <MessagesPanel />
+          <Box height={1} />
+          {/* MessagesPanel uses flexGrow to fill remaining space */}
+          <MessagesPanel client={client} />
+          <Box height={1} />
           <InputBox client={client} />
         </Box>
       </Box>
