@@ -1,9 +1,10 @@
 /**
  * ChatsPanel Component
  * Displays list of chats (spaces and DMs) in the left sidebar
+ * Features: scrollable viewport, lazy loading
  */
 
-import { Box, Text } from 'ink';
+import { Box, Text, useStdout } from 'ink';
 import { useEffect, useState } from 'react';
 import {
   useAppState,
@@ -19,7 +20,13 @@ export function ChatsPanel() {
   const currentChat = useCurrentChat();
   const { dispatch } = useAppState();
   const { isFocused } = useFocus('chats');
+  const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  // Calculate viewport height (terminal height minus header, footer, borders, etc.)
+  // Title bar (3 lines) + header (2 lines) + footer help text (3 lines) + borders (2 lines) = ~10 lines
+  const viewportHeight = Math.max(5, stdout.rows - 10);
 
   // Update selected index when current chat changes
   useEffect(() => {
@@ -30,6 +37,17 @@ export function ChatsPanel() {
       }
     }
   }, [currentChat, chats]);
+
+  // Auto-scroll to keep selected item visible
+  useEffect(() => {
+    if (selectedIndex < scrollOffset) {
+      // Scroll up
+      setScrollOffset(selectedIndex);
+    } else if (selectedIndex >= scrollOffset + viewportHeight) {
+      // Scroll down
+      setScrollOffset(selectedIndex - viewportHeight + 1);
+    }
+  }, [selectedIndex, viewportHeight, scrollOffset]);
 
   // Keyboard handlers
   useKeyHandler(
@@ -95,6 +113,11 @@ export function ChatsPanel() {
     );
   };
 
+  // Calculate visible chats based on viewport
+  const visibleChats = chats.slice(scrollOffset, scrollOffset + viewportHeight);
+  const hasMore = scrollOffset + viewportHeight < chats.length;
+  const hasScrolledUp = scrollOffset > 0;
+
   return (
     <Box
       flexDirection="column"
@@ -114,7 +137,26 @@ export function ChatsPanel() {
         {chats.length === 0 ? (
           <Text color="gray">No chats available</Text>
         ) : (
-          chats.map((chat, index) => formatChatLine(chat, index))
+          <>
+            {hasScrolledUp && (
+              <Box>
+                <Text color="gray" dimColor>
+                  ↑ {scrollOffset} more above
+                </Text>
+              </Box>
+            )}
+            {visibleChats.map((chat, viewportIndex) => {
+              const actualIndex = scrollOffset + viewportIndex;
+              return formatChatLine(chat, actualIndex);
+            })}
+            {hasMore && (
+              <Box>
+                <Text color="gray" dimColor>
+                  ↓ {chats.length - (scrollOffset + viewportHeight)} more below
+                </Text>
+              </Box>
+            )}
+          </>
         )}
       </Box>
 
