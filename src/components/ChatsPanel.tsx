@@ -55,12 +55,11 @@ export function ChatsPanel() {
   //   - Footer help (when focused): 3 lines (2 borders + 1 text)
   //   - Bottom border: 1 line (shared with footer if focused, else separate)
   //
-  // Total overhead when focused: 3 (title) + 1 (border) + 2 (header) + 3 (footer) + 1 (border) = 10 lines
-  // Total overhead when unfocused: 3 (title) + 1 (border) + 2 (header) + 1 (border) = 7 lines
-  //
-  // Use conservative estimate (focused state): stdout.rows - 10
-  const panelOverhead = isFocused ? 10 : 7;
-  const viewportHeight = Math.max(5, stdout.rows - panelOverhead);
+  // Total overhead: 3 (title) + 2 (borders) + 2 (header) + footer (3 if focused, 0 if not)
+  const titleBarHeight = 3;
+  const chatsPanelChrome = isFocused ? 7 : 4; // borders + header + footer
+  const availableHeight = stdout.rows - titleBarHeight - chatsPanelChrome;
+  const viewportHeight = Math.max(5, availableHeight);
 
   // Reset search/browse when mode changes
   useEffect(() => {
@@ -296,7 +295,8 @@ export function ChatsPanel() {
     <Box
       flexDirection="column"
       width="25%"
-      height="100%"
+      flexGrow={1}
+      minHeight={0}
       borderStyle="single"
       borderColor={borderColor}
       paddingX={1}
@@ -315,7 +315,7 @@ export function ChatsPanel() {
         </Box>
       )}
 
-      <Box flexDirection="column" flexGrow={1}>
+      <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
         {loadingRooms ? (
           <Text color="gray">Loading rooms...</Text>
         ) : displayItems.length === 0 ? (
