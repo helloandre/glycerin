@@ -147,11 +147,6 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
     );
   };
 
-  // Don't show threads panel for DMs
-  if (!currentChat || currentChat.type === 'dm') {
-    return null;
-  }
-
   // Calculate visible threads based on viewport
   const visibleThreads = threads.slice(
     scrollOffset,
@@ -159,6 +154,9 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
   );
   const hasMore = scrollOffset + viewportHeight < threads.length;
   const hasScrolledUp = scrollOffset > 0;
+
+  // Determine if we should show threads panel content
+  const showThreads = currentChat && currentChat.type === 'space';
 
   return (
     <Box
@@ -185,7 +183,9 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
       </Box>
 
       <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
-        {threads.length === 0 ? (
+        {!showThreads ? (
+          <Text color="gray">Direct messages don't have threads</Text>
+        ) : threads.length === 0 ? (
           <Text color="gray">
             {isLoading ? 'Loading threads...' : 'No threads in this space'}
           </Text>

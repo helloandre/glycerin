@@ -65,14 +65,16 @@ export function InputBox({ client }: InputBoxProps) {
     }
   };
 
-  // Don't show input if no chat is selected
-  if (!currentChat) {
-    return null;
-  }
+  // Determine the appropriate empty state message
+  let emptyStateMessage = '';
+  let canInput = true;
 
-  // Don't show input if space selected but no thread
-  if (currentChat.type === 'space' && !currentThread) {
-    return null;
+  if (!currentChat) {
+    emptyStateMessage = 'Select a chat to send messages';
+    canInput = false;
+  } else if (currentChat.type === 'space' && !currentThread) {
+    emptyStateMessage = 'Select a thread to send messages';
+    canInput = false;
   }
 
   return (
@@ -91,7 +93,9 @@ export function InputBox({ client }: InputBoxProps) {
         </Text>
       </Box>
 
-      {isFocused ? (
+      {!canInput ? (
+        <Text color="gray">{emptyStateMessage}</Text>
+      ) : isFocused ? (
         <>
           <TextInput
             value={value}
