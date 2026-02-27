@@ -1,3 +1,5 @@
+import { log } from './logger.js';
+
 export type EventCallback = (...args: unknown[]) => void | Promise<void>;
 
 export class EventEmitter {
@@ -38,7 +40,7 @@ export class EventEmitter {
         try {
           await callback(...args);
         } catch (err) {
-          console.error(`Error in event listener for "${event}":`, err);
+          log.channel.error(`Error in event listener for "${event}"`, err);
         }
       }
     }

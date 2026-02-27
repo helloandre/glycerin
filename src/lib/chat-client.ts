@@ -67,13 +67,14 @@ export class GlycerinChatClient {
    */
   async getThreads(
     chatId: string,
-    options?: { pageSize?: number; since?: number }
+    options?: { pageSize?: number; since?: number; cursor?: number }
   ): Promise<any> {
     this.ensureInitialized();
     return this.client!.getThreads(chatId, {
       pageSize: options?.pageSize || 50,
       format: 'threaded',
       since: options?.since,
+      cursor: options?.cursor,
     });
   }
 

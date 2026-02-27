@@ -3,10 +3,14 @@
  * Text input for sending messages
  */
 
-import { Box, Text } from 'ink';
+import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { useState } from 'react';
-import { useCurrentChat, useCurrentThread } from '../context/AppContext.js';
+import {
+  useAppState,
+  useCurrentChat,
+  useCurrentThread,
+} from '../context/AppContext.js';
 import { useFocus } from '../hooks/useFocus.js';
 import type { GlycerinChatClient } from '../lib/chat-client.js';
 import { logger } from '../lib/logger.js';
@@ -18,9 +22,20 @@ interface InputBoxProps {
 export function InputBox({ client }: InputBoxProps) {
   const currentChat = useCurrentChat();
   const currentThread = useCurrentThread();
+  const { dispatch } = useAppState();
   const { isFocused } = useFocus('input');
   const [value, setValue] = useState('');
   const [sending, setSending] = useState(false);
+
+  // Handle escape to go to messages (so user can scroll)
+  useInput(
+    (input, key) => {
+      if (key.escape && isFocused) {
+        dispatch({ type: 'FOCUS_CHANGED', payload: 'messages' });
+      }
+    },
+    { isActive: isFocused }
+  );
 
   const handleSubmit = async (text: string) => {
     if (!text.trim() || !currentChat) return;
@@ -77,12 +92,17 @@ export function InputBox({ client }: InputBoxProps) {
       </Box>
 
       {isFocused ? (
-        <TextInput
-          value={value}
-          onChange={setValue}
-          onSubmit={handleSubmit}
-          placeholder="Type a message..."
-        />
+        <>
+          <TextInput
+            value={value}
+            onChange={setValue}
+            onSubmit={handleSubmit}
+            placeholder="Type a message..."
+          />
+          <Box marginTop={1}>
+            <Text dimColor>⏎:send esc:back</Text>
+          </Box>
+        </>
       ) : (
         <Text color="gray">Press Enter to focus input</Text>
       )}

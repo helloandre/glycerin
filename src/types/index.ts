@@ -63,6 +63,15 @@ export interface AppState {
     loading: boolean;
   };
 
+  // Pagination state for threads
+  threadsPagination: Record<
+    string,
+    {
+      cursor?: number;
+      hasMore: boolean;
+    }
+  >;
+
   // Unread tracking
   unread: Chat[];
 
@@ -78,7 +87,13 @@ export type AppAction =
   | { type: 'THREAD_SELECTED'; payload: Thread }
   | {
       type: 'THREADS_LOADED';
-      payload: { chatId: string; threads: Thread[]; hasMore: boolean };
+      payload: {
+        chatId: string;
+        threads: Thread[];
+        hasMore: boolean;
+        cursor?: number;
+        append?: boolean;
+      };
     }
   | {
       type: 'MESSAGES_LOADED';
@@ -91,7 +106,8 @@ export type AppAction =
   | { type: 'FOCUS_CHANGED'; payload: FocusTarget }
   | { type: 'MARK_READ'; payload: { chatId: string; threadId?: string } }
   | { type: 'LOADING_START'; payload: string }
-  | { type: 'LOADING_END'; payload: string };
+  | { type: 'LOADING_END'; payload: string }
+  | { type: 'LOAD_MORE_THREADS'; payload: { chatId: string } };
 
 // App actions interface
 export interface AppActions {

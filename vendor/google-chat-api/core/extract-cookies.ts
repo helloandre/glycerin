@@ -1,18 +1,29 @@
-
 import { execSync } from 'node:child_process';
-import { existsSync, copyFileSync, unlinkSync, readdirSync } from 'node:fs';
+import {
+  createCipheriv,
+  createDecipheriv,
+  pbkdf2Sync,
+  randomBytes,
+} from 'node:crypto';
+import { copyFileSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
-import { createDecipheriv, createCipheriv, pbkdf2Sync, randomBytes } from 'node:crypto';
 import Database from 'better-sqlite3';
 import type { Cookies } from './auth.js';
+import { log } from './logger.js';
 
 const REQUIRED_COOKIES = ['SID', 'HSID', 'SSID', 'OSID'];
 const GOOGLE_DOMAIN_LIKE = '%.google.com';
 const GOOGLE_DOMAIN_ROOT = 'google.com';
 const DEFAULT_PROFILE = 'Profile 1';
 
-export type BrowserType = 'chrome' | 'brave' | 'edge' | 'chromium' | 'arc' | 'custom';
+export type BrowserType =
+  | 'chrome'
+  | 'brave'
+  | 'edge'
+  | 'chromium'
+  | 'arc'
+  | 'custom';
 
 export interface BrowserInfo {
   type: BrowserType;
@@ -42,7 +53,13 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
       chrome: {
         type: 'chrome',
         name: 'Google Chrome',
-        basePath: join(home, 'Library', 'Application Support', 'Google', 'Chrome'),
+        basePath: join(
+          home,
+          'Library',
+          'Application Support',
+          'Google',
+          'Chrome'
+        ),
         keychainService: 'Chrome Safe Storage',
         keychainAccount: 'Chrome',
         processName: 'Google Chrome',
@@ -50,7 +67,13 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
       brave: {
         type: 'brave',
         name: 'Brave Browser',
-        basePath: join(home, 'Library', 'Application Support', 'BraveSoftware', 'Brave-Browser'),
+        basePath: join(
+          home,
+          'Library',
+          'Application Support',
+          'BraveSoftware',
+          'Brave-Browser'
+        ),
         keychainService: 'Brave Safe Storage',
         keychainAccount: 'Brave',
         processName: 'Brave Browser',
@@ -58,7 +81,12 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
       edge: {
         type: 'edge',
         name: 'Microsoft Edge',
-        basePath: join(home, 'Library', 'Application Support', 'Microsoft Edge'),
+        basePath: join(
+          home,
+          'Library',
+          'Application Support',
+          'Microsoft Edge'
+        ),
         keychainService: 'Microsoft Edge Safe Storage',
         keychainAccount: 'Microsoft Edge',
         processName: 'Microsoft Edge',
@@ -74,7 +102,13 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
       arc: {
         type: 'arc',
         name: 'Arc Browser',
-        basePath: join(home, 'Library', 'Application Support', 'Arc', 'User Data'),
+        basePath: join(
+          home,
+          'Library',
+          'Application Support',
+          'Arc',
+          'User Data'
+        ),
         keychainService: 'Arc Safe Storage',
         keychainAccount: 'Arc',
         processName: 'Arc',
@@ -115,7 +149,7 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
         keychainAccount: '',
         processName: 'chromium',
       },
-      arc: null, 
+      arc: null,
       custom: null,
     };
   } else if (os === 'win32') {
@@ -123,7 +157,14 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
       chrome: {
         type: 'chrome',
         name: 'Google Chrome',
-        basePath: join(home, 'AppData', 'Local', 'Google', 'Chrome', 'User Data'),
+        basePath: join(
+          home,
+          'AppData',
+          'Local',
+          'Google',
+          'Chrome',
+          'User Data'
+        ),
         keychainService: '',
         keychainAccount: '',
         processName: 'chrome.exe',
@@ -131,7 +172,14 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
       brave: {
         type: 'brave',
         name: 'Brave Browser',
-        basePath: join(home, 'AppData', 'Local', 'BraveSoftware', 'Brave-Browser', 'User Data'),
+        basePath: join(
+          home,
+          'AppData',
+          'Local',
+          'BraveSoftware',
+          'Brave-Browser',
+          'User Data'
+        ),
         keychainService: '',
         keychainAccount: '',
         processName: 'brave.exe',
@@ -139,7 +187,14 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
       edge: {
         type: 'edge',
         name: 'Microsoft Edge',
-        basePath: join(home, 'AppData', 'Local', 'Microsoft', 'Edge', 'User Data'),
+        basePath: join(
+          home,
+          'AppData',
+          'Local',
+          'Microsoft',
+          'Edge',
+          'User Data'
+        ),
         keychainService: '',
         keychainAccount: '',
         processName: 'msedge.exe',
@@ -152,12 +207,19 @@ function getBrowserConfigs(): Record<BrowserType, BrowserInfo | null> {
         keychainAccount: '',
         processName: 'chromium.exe',
       },
-      arc: null, 
+      arc: null,
       custom: null,
     };
   }
 
-  return { chrome: null, brave: null, edge: null, chromium: null, arc: null, custom: null };
+  return {
+    chrome: null,
+    brave: null,
+    edge: null,
+    chromium: null,
+    arc: null,
+    custom: null,
+  };
 }
 
 export function listBrowsers(): BrowserInfo[] {
@@ -193,12 +255,12 @@ export function setBrowser(browser: BrowserType): void {
   if (!existsSync(config.basePath)) {
     throw new Error(
       `Browser "${config.name}" is not installed or has not been run yet.\n` +
-      `Expected path: ${config.basePath}`
+        `Expected path: ${config.basePath}`
     );
   }
 
   selectedBrowser = browser;
-  console.log(`Selected browser: ${config.name}`);
+  log.auth.info(`Selected browser: ${config.name}`);
 }
 
 export function setCustomCookiePath(cookiePath: string): void {
@@ -208,7 +270,7 @@ export function setCustomCookiePath(cookiePath: string): void {
 
   customCookiePath = cookiePath;
   selectedBrowser = 'custom';
-  console.log(`Using custom cookie path: ${cookiePath}`);
+  log.auth.info(`Using custom cookie path: ${cookiePath}`);
 }
 
 function getCurrentBrowserConfig(): BrowserInfo | null {
@@ -235,7 +297,13 @@ export function getBrowserBasePath(): string {
   const os = platform();
 
   if (os === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'Google', 'Chrome');
+    return join(
+      homedir(),
+      'Library',
+      'Application Support',
+      'Google',
+      'Chrome'
+    );
   } else if (os === 'linux') {
     return join(homedir(), '.config', 'google-chrome');
   } else if (os === 'win32') {
@@ -250,7 +318,9 @@ export function listProfiles(browser?: BrowserType): string[] {
     return ['custom'];
   }
 
-  const basePath = browser ? getBrowserConfigs()[browser]?.basePath : getBrowserBasePath();
+  const basePath = browser
+    ? getBrowserConfigs()[browser]?.basePath
+    : getBrowserBasePath();
 
   if (!basePath || !existsSync(basePath)) {
     return [];
@@ -271,7 +341,10 @@ export function listProfiles(browser?: BrowserType): string[] {
   return profiles;
 }
 
-export function listBrowsersWithProfiles(): Array<{ browser: BrowserInfo; profiles: string[] }> {
+export function listBrowsersWithProfiles(): Array<{
+  browser: BrowserInfo;
+  profiles: string[];
+}> {
   const browsers = listBrowsers();
   return browsers.map(browser => ({
     browser,
@@ -291,7 +364,7 @@ export function setProfile(profile: string): void {
   selectedProfile = profile;
   const config = getBrowserConfigs()[selectedBrowser];
   const browserName = config?.name || 'Browser';
-  console.log(`Selected ${browserName} profile: ${profile}`);
+  log.auth.info(`Selected ${browserName} profile: ${profile}`);
 }
 
 export function getProfile(): string | null {
@@ -316,8 +389,10 @@ function getBrowserKeyMac(): ChromeKeys {
     ).trim();
 
     if (keyDebug) {
-      console.log(`Keychain password length: ${result.length}`);
-      console.log(`Keychain password (first 10): "${result.slice(0, 10)}..."`);
+      log.auth.debug(`Keychain password length: ${result.length}`);
+      log.auth.debug(
+        `Keychain password (first 10): "${result.slice(0, 10)}..."`
+      );
     }
 
     const salt = Buffer.from('saltysalt');
@@ -326,19 +401,21 @@ function getBrowserKeyMac(): ChromeKeys {
     const gcmKey = pbkdf2Sync(result, salt, iterations, 32, 'sha1');
 
     if (keyDebug) {
-      console.log(`Derived CBC key (hex): ${cbcKey.toString('hex')}`);
-      console.log(`Derived GCM key (hex): ${gcmKey.toString('hex')}`);
+      log.auth.debug(`Derived CBC key (hex): ${cbcKey.toString('hex')}`);
+      log.auth.debug(`Derived GCM key (hex): ${gcmKey.toString('hex')}`);
     }
 
     return { cbcKey, gcmKey };
   } catch (e) {
-    throw new Error(`Failed to get ${browserName} encryption key from Keychain. Make sure ${browserName} has been run at least once.`);
+    throw new Error(
+      `Failed to get ${browserName} encryption key from Keychain. Make sure ${browserName} has been run at least once.`
+    );
   }
 }
 
 function getBrowserKeyLinux(password: string = 'peanuts'): ChromeKeys {
   if (keyDebug) {
-    console.log(`Using Linux password: "${password}"`);
+    log.auth.debug(`Using Linux password: "${password}"`);
   }
 
   const salt = Buffer.from('saltysalt');
@@ -347,8 +424,8 @@ function getBrowserKeyLinux(password: string = 'peanuts'): ChromeKeys {
   const gcmKey = pbkdf2Sync(password, salt, iterations, 32, 'sha1');
 
   if (keyDebug) {
-    console.log(`Derived CBC key (hex): ${cbcKey.toString('hex')}`);
-    console.log(`Derived GCM key (hex): ${gcmKey.toString('hex')}`);
+    log.auth.debug(`Derived CBC key (hex): ${cbcKey.toString('hex')}`);
+    log.auth.debug(`Derived GCM key (hex): ${gcmKey.toString('hex')}`);
   }
 
   return { cbcKey, gcmKey };
@@ -366,7 +443,11 @@ function getBrowserKeys(options: { password?: string } = {}): ChromeKeys {
   }
 }
 
-function decryptCookieValue(encryptedValue: Buffer, keys: ChromeKeys, debug = false): string {
+function decryptCookieValue(
+  encryptedValue: Buffer,
+  keys: ChromeKeys,
+  debug = false
+): string {
   if (encryptedValue.length === 0) {
     return '';
   }
@@ -374,16 +455,18 @@ function decryptCookieValue(encryptedValue: Buffer, keys: ChromeKeys, debug = fa
   const prefix = encryptedValue.slice(0, 3).toString('ascii');
 
   if (debug) {
-    console.log(`  Decrypting: prefix="${prefix}", len=${encryptedValue.length}`);
+    log.auth.debug(
+      `  Decrypting: prefix="${prefix}", len=${encryptedValue.length}`
+    );
   }
 
   if (prefix === 'v10') {
-    const iv = Buffer.alloc(16, ' '); 
+    const iv = Buffer.alloc(16, ' ');
     const data = encryptedValue.slice(3);
 
     try {
       const decipher = createDecipheriv('aes-128-cbc', keys.cbcKey, iv);
-      decipher.setAutoPadding(true); 
+      decipher.setAutoPadding(true);
 
       let decrypted = decipher.update(data);
       decrypted = Buffer.concat([decrypted, decipher.final()]);
@@ -391,23 +474,23 @@ function decryptCookieValue(encryptedValue: Buffer, keys: ChromeKeys, debug = fa
       if (decrypted.length > 32) {
         const first32 = decrypted.slice(0, 32);
         const hasBinaryPrefix = first32.some(b => b < 32 || b > 126);
-        
+
         if (hasBinaryPrefix) {
           decrypted = decrypted.slice(32);
           if (debug) {
-            console.log(`  Skipped 32-byte integrity prefix`);
+            log.auth.debug(`  Skipped 32-byte integrity prefix`);
           }
         }
       }
 
       if (debug) {
         const preview = decrypted.slice(0, 30).toString('utf-8');
-        console.log(`  Decrypted (first 30 chars): "${preview}"`);
+        log.auth.debug(`  Decrypted (first 30 chars): "${preview}"`);
       }
 
       return decrypted.toString('utf-8').trim();
     } catch (e) {
-      if (debug) console.log(`  CBC decryption error: ${e}`);
+      if (debug) log.auth.debug(`  CBC decryption error: ${e}`);
       return '';
     }
   }
@@ -449,18 +532,22 @@ function extractCookiesFromBrowserDb(debug = false): Cookies {
   const browserName = config?.name || 'Browser';
 
   if (os !== 'darwin' && os !== 'linux') {
-    throw new Error(`Cookie extraction only supported on macOS and Linux, got: ${os}`);
+    throw new Error(
+      `Cookie extraction only supported on macOS and Linux, got: ${os}`
+    );
   }
 
   const cookiePath = findBrowserCookiePath();
   if (!cookiePath) {
     if (customCookiePath) {
-      throw new Error(`Cookie database not found at custom path: ${customCookiePath}`);
+      throw new Error(
+        `Cookie database not found at custom path: ${customCookiePath}`
+      );
     }
     if (selectedProfile) {
       throw new Error(
         `${browserName} cookie database not found for profile "${selectedProfile}". ` +
-        `Make sure ${browserName} profile exists and has been opened at least once.`
+          `Make sure ${browserName} profile exists and has been opened at least once.`
       );
     }
 
@@ -470,13 +557,15 @@ function extractCookiesFromBrowserDb(debug = false): Cookies {
   }
 
   if (debug) {
-    console.log(`Using cookie database: ${cookiePath}`);
-    console.log(`Browser: ${browserName}`);
+    log.auth.debug(`Using cookie database: ${cookiePath}`);
+    log.auth.debug(`Browser: ${browserName}`);
   }
 
   const keys = getBrowserKeys();
   if (debug) {
-    console.log(`Encryption keys: CBC ${keys.cbcKey.length} bytes, GCM ${keys.gcmKey.length} bytes`);
+    log.auth.debug(
+      `Encryption keys: CBC ${keys.cbcKey.length} bytes, GCM ${keys.gcmKey.length} bytes`
+    );
   }
 
   const tempPath = `/tmp/chrome_cookies_${Date.now()}.db`;
@@ -500,12 +589,12 @@ function extractCookiesFromBrowserDb(debug = false): Cookies {
     }>;
 
     if (debug) {
-      console.log(`Found ${rows.length} Google cookies in database`);
+      log.auth.debug(`Found ${rows.length} Google cookies in database`);
     }
 
     for (const row of rows) {
       if (debug) {
-        console.log(`\nProcessing: ${row.name} from ${row.host_key}`);
+        log.auth.debug(`\nProcessing: ${row.name} from ${row.host_key}`);
       }
 
       const value = decryptCookieValue(row.encrypted_value, keys, debug);
@@ -515,13 +604,11 @@ function extractCookiesFromBrowserDb(debug = false): Cookies {
           if (row.host_key === 'chat.google.com' || !(row.name in cookies)) {
             cookies[row.name] = value;
           }
-        }
-        else if (row.name === 'COMPASS') {
+        } else if (row.name === 'COMPASS') {
           if (row.host_key === 'chat.google.com' || !(row.name in cookies)) {
             cookies[row.name] = value;
           }
-        }
-        else if (row.host_key === '.google.com' || !(row.name in cookies)) {
+        } else if (row.host_key === '.google.com' || !(row.name in cookies)) {
           cookies[row.name] = value;
         }
       }
@@ -533,8 +620,7 @@ function extractCookiesFromBrowserDb(debug = false): Cookies {
   } finally {
     try {
       unlinkSync(tempPath);
-    } catch {
-    }
+    } catch {}
   }
 }
 
@@ -547,11 +633,13 @@ export function extractCookiesFromBrowser(debug = false): Cookies {
   const cookies = extractCookiesFromBrowserDb(debug);
 
   if (debug) {
-    console.log('Extracted cookies:');
+    log.auth.debug('Extracted cookies:');
     for (const [name, value] of Object.entries(cookies)) {
       const preview = value.length > 20 ? `${value.slice(0, 20)}...` : value;
       const hasNonAscii = [...value].some(c => c.charCodeAt(0) > 127);
-      console.log(`  ${name}: ${preview} (len=${value.length}, nonAscii=${hasNonAscii})`);
+      log.auth.debug(
+        `  ${name}: ${preview} (len=${value.length}, nonAscii=${hasNonAscii})`
+      );
     }
   }
 
@@ -559,7 +647,7 @@ export function extractCookiesFromBrowser(debug = false): Cookies {
     const missing = REQUIRED_COOKIES.filter(name => !cookies[name]);
     throw new Error(
       `Missing required cookies: ${missing.join(', ')}. ` +
-      'Make sure you are logged into chat.google.com in Chrome.'
+        'Make sure you are logged into chat.google.com in Chrome.'
     );
   }
 
@@ -572,7 +660,9 @@ export function extractCookiesWithDomains(debug = false): CookieWithDomain[] {
   const browserName = config?.name || 'Browser';
 
   if (os !== 'darwin' && os !== 'linux') {
-    throw new Error(`Cookie extraction only supported on macOS and Linux, got: ${os}`);
+    throw new Error(
+      `Cookie extraction only supported on macOS and Linux, got: ${os}`
+    );
   }
 
   const cookiePath = findBrowserCookiePath();
@@ -607,7 +697,7 @@ export function extractCookiesWithDomains(debug = false): CookieWithDomain[] {
       const value = decryptCookieValue(row.encrypted_value, keys, debug);
       if (value) {
         if (debug) {
-          console.log(`  Cookie: ${row.name} domain=${row.host_key}`);
+          log.auth.debug(`  Cookie: ${row.name} domain=${row.host_key}`);
         }
         results.push({
           name: row.name,
@@ -622,8 +712,7 @@ export function extractCookiesWithDomains(debug = false): CookieWithDomain[] {
   } finally {
     try {
       unlinkSync(tempPath);
-    } catch {
-    }
+    } catch {}
   }
 }
 
@@ -635,12 +724,16 @@ export function tryExtractCookiesFromBrowser(): Cookies | null {
   }
 }
 
-function encryptCookieValue(value: string, keys: ChromeKeys, debug = false): Buffer {
+function encryptCookieValue(
+  value: string,
+  keys: ChromeKeys,
+  debug = false
+): Buffer {
   if (!value) {
     return Buffer.alloc(0);
   }
 
-  const iv = Buffer.alloc(16, ' '); 
+  const iv = Buffer.alloc(16, ' ');
 
   const integrityPrefix = randomBytes(32);
   const valueBuffer = Buffer.from(value, 'utf-8');
@@ -655,7 +748,9 @@ function encryptCookieValue(value: string, keys: ChromeKeys, debug = false): Buf
   const result = Buffer.concat([Buffer.from('v10', 'ascii'), encrypted]);
 
   if (debug) {
-    console.log(`  Encrypted: value_len=${value.length}, result_len=${result.length}`);
+    log.auth.debug(
+      `  Encrypted: value_len=${value.length}, result_len=${result.length}`
+    );
   }
 
   return result;
@@ -664,7 +759,7 @@ function encryptCookieValue(value: string, keys: ChromeKeys, debug = false): Buf
 function isBrowserRunning(): boolean {
   const config = getCurrentBrowserConfig();
   if (!config) {
-    return false; 
+    return false;
   }
 
   const processName = config.processName;
@@ -678,7 +773,10 @@ function isBrowserRunning(): boolean {
       execSync(`pgrep -x ${processName}`, { stdio: 'ignore' });
       return true;
     } else if (os === 'win32') {
-      execSync(`tasklist /FI "IMAGENAME eq ${processName}" | find /I "${processName}"`, { stdio: 'ignore' });
+      execSync(
+        `tasklist /FI "IMAGENAME eq ${processName}" | find /I "${processName}"`,
+        { stdio: 'ignore' }
+      );
       return true;
     }
   } catch {
@@ -700,7 +798,9 @@ export function injectCookiesToBrowser(
 ): void {
   const os = platform();
   if (os !== 'darwin' && os !== 'linux') {
-    throw new Error(`Cookie injection only supported on macOS and Linux, got: ${os}`);
+    throw new Error(
+      `Cookie injection only supported on macOS and Linux, got: ${os}`
+    );
   }
 
   const debug = options.debug || false;
@@ -714,7 +814,7 @@ export function injectCookiesToBrowser(
   if (isBrowserRunning()) {
     throw new Error(
       `${browserName} is currently running. Please close ${browserName} completely before injecting cookies.\n` +
-      'This is required because the browser locks the cookie database while running.'
+        'This is required because the browser locks the cookie database while running.'
     );
   }
 
@@ -727,39 +827,49 @@ export function injectCookiesToBrowser(
   if (!cookiePath) {
     throw new Error(
       `${browserName} cookie database not found for profile "${selectedProfile}". ` +
-      `Make sure the profile exists and ${browserName} has been run at least once.`
+        `Make sure the profile exists and ${browserName} has been run at least once.`
     );
   }
 
   selectedProfile = originalProfile;
 
   if (debug) {
-    console.log(`Injecting cookies into: ${cookiePath}`);
-    console.log(`Browser: ${browserName}`);
-    console.log(`Domain: ${domain}, Path: ${path}, Expires in: ${expiresInDays} days`);
+    log.auth.debug(`Injecting cookies into: ${cookiePath}`);
+    log.auth.debug(`Browser: ${browserName}`);
+    log.auth.debug(
+      `Domain: ${domain}, Path: ${path}, Expires in: ${expiresInDays} days`
+    );
   }
 
   const keys = getBrowserKeys({ password: options.password });
 
   if (debug) {
-    console.log(`Encryption keys: CBC ${keys.cbcKey.length} bytes, GCM ${keys.gcmKey.length} bytes`);
+    log.auth.debug(
+      `Encryption keys: CBC ${keys.cbcKey.length} bytes, GCM ${keys.gcmKey.length} bytes`
+    );
   }
 
   const expiresDate = new Date();
   expiresDate.setDate(expiresDate.getDate() + expiresInDays);
-  const expiresUtc = Math.floor(expiresDate.getTime() / 1000) + 11644473600; 
+  const expiresUtc = Math.floor(expiresDate.getTime() / 1000) + 11644473600;
   const expiresUtcMicros = expiresUtc * 1000000;
 
   const db = new Database(cookiePath);
 
   try {
-    const schemaInfo = db.prepare("PRAGMA table_info(cookies)").all() as Array<{ name: string }>;
+    const schemaInfo = db.prepare('PRAGMA table_info(cookies)').all() as Array<{
+      name: string;
+    }>;
     const columnNames = schemaInfo.map(col => col.name);
-    const isChromiumSchema = columnNames.includes('top_frame_site_key') && columnNames.includes('has_cross_site_ancestor');
+    const isChromiumSchema =
+      columnNames.includes('top_frame_site_key') &&
+      columnNames.includes('has_cross_site_ancestor');
 
     if (debug) {
-      console.log(`Schema detected: ${isChromiumSchema ? 'Chromium' : 'Chrome'}`);
-      console.log(`Columns: ${columnNames.join(', ')}`);
+      log.auth.debug(
+        `Schema detected: ${isChromiumSchema ? 'Chromium' : 'Chrome'}`
+      );
+      log.auth.debug(`Columns: ${columnNames.join(', ')}`);
     }
 
     let injectedCount = 0;
@@ -769,14 +879,16 @@ export function injectCookiesToBrowser(
       if (!value) continue;
 
       if (debug) {
-        console.log(`\nProcessing: ${name}`);
+        log.auth.debug(`\nProcessing: ${name}`);
       }
 
       const encryptedValue = encryptCookieValue(value, keys, debug);
 
-      const existing = db.prepare(
-        'SELECT rowid FROM cookies WHERE host_key = ? AND name = ? AND path = ?'
-      ).get(domain, name, path) as { rowid: number } | undefined;
+      const existing = db
+        .prepare(
+          'SELECT rowid FROM cookies WHERE host_key = ? AND name = ? AND path = ?'
+        )
+        .get(domain, name, path) as { rowid: number } | undefined;
 
       if (existing) {
         db.prepare(`
@@ -789,11 +901,18 @@ export function injectCookiesToBrowser(
               samesite = 0,
               last_access_utc = ?
           WHERE rowid = ?
-        `).run(encryptedValue, expiresUtcMicros, Date.now() * 1000, existing.rowid);
+        `).run(
+          encryptedValue,
+          expiresUtcMicros,
+          Date.now() * 1000,
+          existing.rowid
+        );
 
         updatedCount++;
         if (debug) {
-          console.log(`  Updated existing cookie (rowid: ${existing.rowid})`);
+          log.auth.debug(
+            `  Updated existing cookie (rowid: ${existing.rowid})`
+          );
         }
       } else {
         const creationUtc = Date.now() * 1000;
@@ -809,13 +928,13 @@ export function injectCookiesToBrowser(
           `).run(
             creationUtc,
             domain,
-            domain, 
+            domain,
             name,
             encryptedValue,
             path,
             expiresUtcMicros,
             creationUtc,
-            creationUtc 
+            creationUtc
           );
         } else {
           db.prepare(`
@@ -838,13 +957,15 @@ export function injectCookiesToBrowser(
 
         injectedCount++;
         if (debug) {
-          console.log(`  Inserted new cookie`);
+          log.auth.debug(`  Inserted new cookie`);
         }
       }
     }
 
     if (debug || injectedCount > 0 || updatedCount > 0) {
-      console.log(`\nInjection complete: ${injectedCount} inserted, ${updatedCount} updated`);
+      log.auth.info(
+        `\nInjection complete: ${injectedCount} inserted, ${updatedCount} updated`
+      );
     }
   } finally {
     db.close();

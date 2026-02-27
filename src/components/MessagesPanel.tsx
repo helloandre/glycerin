@@ -6,7 +6,11 @@
 
 import { Box, Text, useStdout } from 'ink';
 import { useEffect, useState } from 'react';
-import { useCurrentChat, useCurrentThread } from '../context/AppContext.js';
+import {
+  useAppState,
+  useCurrentChat,
+  useCurrentThread,
+} from '../context/AppContext.js';
 import { useFocus } from '../hooks/useFocus.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
 import type { Message } from '../types/index.js';
@@ -14,6 +18,7 @@ import type { Message } from '../types/index.js';
 export function MessagesPanel() {
   const currentThread = useCurrentThread();
   const currentChat = useCurrentChat();
+  const { dispatch } = useAppState();
   const { isFocused } = useFocus('messages');
   const { stdout } = useStdout();
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -55,6 +60,18 @@ export function MessagesPanel() {
       'ctrl+g': () => setScrollOffset(0),
       'ctrl+l': () =>
         setScrollOffset(Math.max(0, messages.length - viewportHeight)),
+      enter: () => {
+        // Go to input to reply
+        dispatch({ type: 'FOCUS_CHANGED', payload: 'input' });
+      },
+      escape: () => {
+        // Go back to threads for spaces, or chats for DMs
+        if (currentChat?.type === 'dm') {
+          dispatch({ type: 'FOCUS_CHANGED', payload: 'chats' });
+        } else {
+          dispatch({ type: 'FOCUS_CHANGED', payload: 'threads' });
+        }
+      },
     },
     { enabled: isFocused }
   );
@@ -145,7 +162,7 @@ export function MessagesPanel() {
 
       {isFocused && (
         <Box borderStyle="single" borderColor="gray" marginTop={1} paddingX={1}>
-          <Text dimColor>^K/^J:scroll ^G/^L:top/bottom</Text>
+          <Text dimColor>^K/^J:scroll ^G/^L:top/bottom ⏎:reply esc:back</Text>
         </Box>
       )}
     </Box>

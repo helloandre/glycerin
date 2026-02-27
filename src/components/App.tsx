@@ -3,9 +3,10 @@
  * Layout and orchestration of all UI components
  */
 
-import { Box, Text, useStdout } from 'ink';
+import { Box, Text, useApp, useStdout } from 'ink';
 import { useEffect } from 'react';
 import { AppStateProvider, useAppState } from '../context/AppContext.js';
+import { useKeyHandler } from '../hooks/useKeyHandler.js';
 import type { GlycerinChatClient } from '../lib/chat-client.js';
 import { logger } from '../lib/logger.js';
 import type { Chat } from '../types/index.js';
@@ -23,6 +24,19 @@ interface AppProps {
 function AppContent({ client }: AppProps) {
   const { state, dispatch } = useAppState();
   const { stdout } = useStdout();
+  const { exit } = useApp();
+
+  // Global hotkeys (work regardless of focus)
+  useKeyHandler(
+    {
+      'ctrl+c': () => exit(),
+      'ctrl+f': () => {
+        // TODO: Implement search modal
+        logger.info('Search not yet implemented');
+      },
+    },
+    { enabled: true }
+  );
 
   // Log terminal dimensions for debugging (can be removed after testing)
   useEffect(() => {
@@ -30,6 +44,38 @@ function AppContent({ client }: AppProps) {
       logger.debug(`Terminal size: ${stdout.columns}x${stdout.rows}`);
     }
   }, [stdout.columns, stdout.rows]);
+
+  // Function to load more threads
+  const loadMoreThreads = async (chatId: string) => {
+    const pagination = state.threadsPagination[chatId];
+    if (!pagination?.hasMore || !pagination.cursor) return;
+
+    dispatch({ type: 'LOADING_START', payload: 'threads' });
+    try {
+      const result = await client.getThreads(chatId, {
+        pageSize: 25,
+        cursor: pagination.cursor,
+      });
+      const threads = (result.topics || []).map((topic: any) => ({
+        ...topic,
+        isUnread: false, // TODO: Determine from API data
+      }));
+      dispatch({
+        type: 'THREADS_LOADED',
+        payload: {
+          chatId,
+          threads,
+          hasMore: result.pagination?.has_more || false,
+          cursor: result.pagination?.next_cursor,
+          append: true,
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to load more threads', error);
+    } finally {
+      dispatch({ type: 'LOADING_END', payload: 'threads' });
+    }
+  };
 
   // Load chats on mount
   useEffect(() => {
@@ -67,7 +113,9 @@ function AppContent({ client }: AppProps) {
 
       dispatch({ type: 'LOADING_START', payload: 'threads' });
       try {
-        const result = await client.getThreads(state.active.chat);
+        const result = await client.getThreads(state.active.chat, {
+          pageSize: 25,
+        });
         const threads = (result.topics || []).map((topic: any) => ({
           ...topic,
           isUnread: false, // TODO: Determine from API data
@@ -77,7 +125,9 @@ function AppContent({ client }: AppProps) {
           payload: {
             chatId: state.active.chat,
             threads,
-            hasMore: result.hasMore || false,
+            hasMore: result.pagination?.has_more || false,
+            cursor: result.pagination?.next_cursor,
+            append: false,
           },
         });
       } catch (error) {
@@ -152,7 +202,7 @@ function AppContent({ client }: AppProps) {
             Glycerin - Google Chat TUI
           </Text>
           <Text color="gray"> | </Text>
-          <Text color="gray">Ctrl+D: Quit | Ctrl+F: Search</Text>
+          <Text color="gray">Ctrl+C: Quit | Ctrl+F: Search</Text>
         </Box>
         <Box>
           <LoadingIndicator loadingKey="chats" message="Loading chats..." />
@@ -172,7 +222,7 @@ function AppContent({ client }: AppProps) {
 
         {/* Right Side - Threads, Messages, Input */}
         <Box flexDirection="column" width="75%" flexGrow={1}>
-          <ThreadsPanel />
+          <ThreadsPanel client={client} onLoadMore={loadMoreThreads} />
           <MessagesPanel />
           <InputBox client={client} />
         </Box>

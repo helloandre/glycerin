@@ -1,7 +1,7 @@
 /**
  * ThreadsPanel Component
  * Displays list of threads for the selected chat
- * Features: scrollable viewport
+ * Features: scrollable viewport, pagination
  */
 
 import { Box, Text } from 'ink';
@@ -10,18 +10,28 @@ import {
   useAppState,
   useCurrentChat,
   useCurrentThread,
+  useIsLoading,
   useThreads,
+  useThreadsPagination,
 } from '../context/AppContext.js';
 import { useFocus } from '../hooks/useFocus.js';
 import { useKeyHandler } from '../hooks/useKeyHandler.js';
+import type { GlycerinChatClient } from '../lib/chat-client.js';
 import type { Thread } from '../types/index.js';
 
-export function ThreadsPanel() {
+interface ThreadsPanelProps {
+  client: GlycerinChatClient;
+  onLoadMore: (chatId: string) => Promise<void>;
+}
+
+export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
   const threads = useThreads();
   const currentThread = useCurrentThread();
   const currentChat = useCurrentChat();
   const { dispatch } = useAppState();
   const { isFocused } = useFocus('threads');
+  const pagination = useThreadsPagination(currentChat?.id);
+  const isLoading = useIsLoading('threads');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
 
@@ -56,6 +66,13 @@ export function ThreadsPanel() {
     }
   }, [selectedIndex, scrollOffset]);
 
+  // Function to load more threads
+  const handleLoadMore = async () => {
+    if (currentChat && pagination.hasMore && !isLoading) {
+      await onLoadMore(currentChat.id);
+    }
+  };
+
   // Keyboard handlers
   useKeyHandler(
     {
@@ -65,6 +82,8 @@ export function ThreadsPanel() {
       up: () => handleUp(),
       g: () => setSelectedIndex(0),
       'shift+g': () => setSelectedIndex(Math.max(0, threads.length - 1)),
+      pagedown: () => handleLoadMore(),
+      'ctrl+d': () => handleLoadMore(),
       enter: () => handleSelect(),
       escape: () => dispatch({ type: 'FOCUS_CHANGED', payload: 'chats' }),
     },
@@ -148,13 +167,21 @@ export function ThreadsPanel() {
     >
       <Box marginBottom={1}>
         <Text bold color={isFocused ? 'cyan' : 'gray'}>
-          Threads {threads.length > 0 && `(${threads.length})`}
+          {currentChat?.name || 'Threads'}
         </Text>
+        {isLoading && (
+          <>
+            <Text color="gray"> </Text>
+            <Text color="yellow">Loading...</Text>
+          </>
+        )}
       </Box>
 
       <Box flexDirection="column" flexGrow={1}>
         {threads.length === 0 ? (
-          <Text color="gray">No threads in this space</Text>
+          <Text color="gray">
+            {isLoading ? 'Loading threads...' : 'No threads in this space'}
+          </Text>
         ) : (
           <>
             {hasScrolledUp && (
@@ -175,13 +202,25 @@ export function ThreadsPanel() {
                 </Text>
               </Box>
             )}
+            {pagination.hasMore && !hasMore && (
+              <Box>
+                <Text color="cyan" dimColor>
+                  {isLoading
+                    ? 'Loading...'
+                    : `${pagination.hasMore ? 'Ctrl+D: Load older threads' : ''}`}
+                </Text>
+              </Box>
+            )}
           </>
         )}
       </Box>
 
       {isFocused && (
         <Box borderStyle="single" borderColor="gray" marginTop={1} paddingX={1}>
-          <Text dimColor>↑↓:nav ⏎:select esc:back</Text>
+          <Text dimColor>
+            j/k:nav ⏎:select esc:back
+            {pagination.hasMore && ' | Ctrl+D:load more'}
+          </Text>
         </Box>
       )}
     </Box>
