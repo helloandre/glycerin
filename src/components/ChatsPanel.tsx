@@ -124,18 +124,13 @@ export function ChatsPanel() {
     if (!isFocused || (mode !== 'search' && mode !== 'browse')) return;
 
     if (key.return) {
-      if (mode === 'browse') {
-        // In browse mode, Enter selects/joins
-        handleSelect();
-      } else {
-        // Exit search mode on Enter
-        setMode('normal');
-        setSearchQuery('');
-      }
+      // In both search and browse mode, Enter selects the highlighted item
+      handleSelect();
     } else if (key.escape) {
       // Exit search/browse mode on Escape
       setMode('normal');
       setSearchQuery('');
+      setPreviewedRoom(null);
     } else if (key.backspace || key.delete) {
       setSearchQuery(prev => prev.slice(0, -1));
     } else if (!key.ctrl && !key.meta && input) {
@@ -143,7 +138,7 @@ export function ChatsPanel() {
     }
   });
 
-  // Keyboard handlers for navigation (normal mode only, not when typing in search/browse)
+  // Keyboard handlers for navigation and shortcuts
   useKeyHandler(
     {
       j: () => handleDown(),
@@ -164,16 +159,23 @@ export function ChatsPanel() {
         } else if (mode === 'browse') {
           // Exit browse mode
           setMode('normal');
+          setPreviewedRoom(null);
+        }
+      },
+      'ctrl+j': () => {
+        if (mode === 'browse') {
+          handleJoinRoom();
         }
       },
       escape: () => {
         if (mode === 'browse' || mode === 'search') {
           setMode('normal');
           setSearchQuery('');
+          setPreviewedRoom(null);
         }
       },
     },
-    { enabled: isFocused && mode === 'normal' }
+    { enabled: isFocused && mode !== 'search' }
   );
 
   const handleDown = () => {
@@ -241,12 +243,13 @@ export function ChatsPanel() {
 
     // Different color scheme for browse mode
     const isBrowse = mode === 'browse';
+    const isPreviewed = isBrowse && previewedRoom?.id === chat.id;
 
     // Determine colors - browse mode uses magenta, normal/search uses cyan
     let color = 'white';
     if (isBrowse) {
       if (isFocused) {
-        color = isSelected ? 'magenta' : 'white';
+        color = isPreviewed ? 'yellow' : isSelected ? 'magenta' : 'white';
       } else {
         color = 'gray';
       }
@@ -268,6 +271,7 @@ export function ChatsPanel() {
     const unreadIndicator = chat.isUnread ? '● ' : '  ';
     const typeIndicator = chat.type === 'dm' ? '👤 ' : '# ';
     const selectionIndicator = isSelected ? '❯ ' : '  ';
+    const previewIndicator = isPreviewed ? '👁 ' : '';
 
     return (
       <Box key={chat.id}>
@@ -275,6 +279,7 @@ export function ChatsPanel() {
           {selectionIndicator}
           {!isBrowse && unreadIndicator}
           {!isBrowse && typeIndicator}
+          {previewIndicator}
           {displayName}
         </Text>
       </Box>

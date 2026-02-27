@@ -41,15 +41,14 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
   // Dynamic viewport height based on terminal size
   // ThreadsPanel takes 30% of available space
   // Panel header: 2 lines (title + margin)
-  // Panel footer (when focused): 3 lines (help text + 2 borders)
   // Panel borders: 2 lines (top + bottom border)
   const { stdout } = useStdout();
-  const titleBarHeight = 3;
-  const inputBoxHeight = 4;
-  const headerFooterOverhead = isFocused ? 7 : 4; // header + footer + borders
-  const totalAvailableHeight = stdout.rows - titleBarHeight - inputBoxHeight;
-  const threadsPanelHeight = Math.floor(totalAvailableHeight * 0.3);
-  const viewportHeight = Math.max(3, threadsPanelHeight - headerFooterOverhead);
+  const headerFooterOverhead = 4; // header + borders
+  const calculatedPanelHeight = Math.floor(stdout.rows * 0.3);
+  const viewportHeight = Math.max(
+    3,
+    calculatedPanelHeight - headerFooterOverhead
+  );
 
   // Update selected index when current thread changes
   useEffect(() => {
@@ -157,28 +156,34 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
     const firstMessage = thread.replies?.[0];
     const userName = firstMessage?.sender || 'Unknown';
     const messageText = firstMessage?.text || 'No messages';
+    const threadCreatedTime = firstMessage?.timestamp_usec;
 
     // Calculate reply info
     const replyCount = Math.max(0, thread.message_count - 1); // Subtract 1 for original message
     const lastReplyTime = thread.sort_time;
-    const timeAgo = formatTimeAgo(lastReplyTime);
+    const createdTimeAgo = formatTimeAgo(threadCreatedTime);
+    const lastReplyTimeAgo = formatTimeAgo(lastReplyTime);
+
+    // Format: <name> (X minutes ago): <thread preview> (Y replies, Z minutes ago)
     const replySuffix =
       replyCount > 0
-        ? ` (${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}, ${timeAgo})`
-        : ` (${timeAgo})`;
+        ? ` (${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}, ${lastReplyTimeAgo})`
+        : '';
 
     // Add indicators
     const unreadIndicator = thread.isUnread ? '● ' : '  ';
     const selectionIndicator = isSelected ? '❯ ' : '  ';
 
+    // Build the prefix: <name> (X minutes ago):
+    const prefix = `${userName} (${createdTimeAgo}): `;
+
     // Calculate available width for message text
-    // Account for: selection indicator (2) + unread (2) + username + ': ' (2) + reply suffix + padding
+    // Account for: selection indicator + unread + prefix + reply suffix + padding
     const prefixLength = selectionIndicator.length + unreadIndicator.length;
-    const userNameLength = userName.length + 2; // +2 for ': '
     const suffixLength = replySuffix.length;
     const messageMaxLength = Math.max(
       10,
-      availableWidth - prefixLength - userNameLength - suffixLength - 2
+      availableWidth - prefixLength - prefix.length - suffixLength - 2
     );
 
     let truncatedMessage = messageText;
@@ -187,14 +192,14 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
     }
 
     return (
-      <Box key={thread.topic_id}>
-        <Text color={color} bold={isSelected && isFocused}>
+      <Box key={thread.topic_id} flexShrink={0}>
+        <Text color={color} bold={isSelected && isFocused} wrap="truncate-end">
           {selectionIndicator}
           {unreadIndicator}
           <Text color="cyan">{userName}</Text>
-          {': '}
+          {` (${createdTimeAgo}): `}
           {truncatedMessage}
-          <Text dimColor>{replySuffix}</Text>
+          {replySuffix && <Text dimColor>{replySuffix}</Text>}
         </Text>
       </Box>
     );
@@ -211,6 +216,9 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
   // Determine if we should show threads panel content
   const showThreads = currentChat && currentChat.type === 'space';
 
+  // Calculate explicit height: 30% of terminal height
+  const threadsPanelHeight = Math.floor(stdout.rows * 0.3);
+
   // Calculate available width for threads panel
   // Chats panel takes 25%, threads panel takes remaining 75%
   const threadsPanelWidth = Math.floor(stdout.columns * 0.75);
@@ -219,6 +227,7 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
   return (
     <Box
       flexDirection="column"
+      height={threadsPanelHeight}
       flexGrow={1}
       flexShrink={1}
       minHeight={0}
@@ -278,15 +287,6 @@ export function ThreadsPanel({ client, onLoadMore }: ThreadsPanelProps) {
           </>
         )}
       </Box>
-
-      {isFocused && (
-        <Box borderStyle="single" borderColor="gray" marginTop={1} paddingX={1}>
-          <Text dimColor>
-            j/k:nav ⏎:select esc:back
-            {pagination.hasMore && ' | Ctrl+D:load more'}
-          </Text>
-        </Box>
-      )}
     </Box>
   );
 }
